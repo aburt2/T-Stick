@@ -107,6 +107,9 @@ power soldering | power circuit view
 
 Hooray, you built a T-Stick!
 
+### Sealing T-Stick
+Add sealing T-Stick info and pictures
+
 ### Firmware
 
 Instructions to upload (flash) the T-Stick firmware and configuration files can be found [here](./Firmware_update_instructions.md).
