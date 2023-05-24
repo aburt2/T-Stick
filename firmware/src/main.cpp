@@ -13,7 +13,7 @@
 unsigned int firmware_version = 220929;
 
 // set the amount of capacitive stripes for the sopranino (15) or soprano (30)
-#define TSTICK_SIZE 16
+#define TSTICK_SIZE 45
 
 /*
   Choose the capacitive sensing board
@@ -140,6 +140,7 @@ LSM9DS1 imu;
 #ifdef touch_TRILL
   #include "touch.h"
   Touch touch;
+  Touch touch2;
 #endif
 
 #ifdef touch_CAPSENSE
@@ -316,13 +317,29 @@ void setup() {
     std::fill_n(lm.touchMin, TSTICK_SIZE, 0);
     std::fill_n(lm.touchMax, TSTICK_SIZE, 1);
     #ifdef touch_TRILL
-        if (touch.initTouch()) {
-            touch.touchSize = TSTICK_SIZE;
-            std::cout << "done" << std::endl;
-        } else {
-            std::cout << "initialization failed!" << std::endl;
+        if (TSTICK_SIZE < 31) {
+            if (touch.initTouch()) {
+                touch.touchSize = TSTICK_SIZE;
+                std::cout << "done" << std::endl;
+            } else {
+                std::cout << "initialization failed!" << std::endl;
+            }
+        } else { // initialise two touch sensors
+            if (touch.initTouch()) {
+                touch.touchSize = 30;
+                std::cout << "first touch done" << std::endl;
+            } else {
+                std::cout << "first touch initialization failed!" << std::endl;
+            }
+            if (touch2.initTouch(0x31)) {
+                touch2.touchSize = TSTICK_SIZE - 30;
+                std::cout << "second touch done" << std::endl;
+            } else {
+                std::cout << "second touch initialization failed!" << std::endl;
+            }
         }
     #endif
+    
     #ifdef touch_CAPSENSE
         capsense.capsense_scan(); // Look for Capsense boards and return their addresses
                                 // must run before initLibmapper to get # of capsense boards
@@ -396,6 +413,11 @@ void loop() {
         touch.readTouch();
         touch.cookData();
         gestures.updateTouchArray(touch.touch,touch.touchSize);
+        if (TSTICK_SIZE > 30) {
+            touch2.readTouch();
+            touch2.cookData();
+            gestures.updateTouchArray(touch2.touch,touch2.touchSize);
+        }
     #endif
     #ifdef touch_CAPSENSE
         capsense.readCapsense();
@@ -529,10 +551,27 @@ void loop() {
 
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/capsense");
             #ifdef touch_TRILL
-                lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                if (TSTICK_SIZE == 30) {
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
                     touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
-                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14]
-            );
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29]);
+                } else if (TSTICK_SIZE == 45) {
+                    // Send data from the first board
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
+                    touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
+                    touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
+                }
+                else {
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                        touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                        touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14]);
+                }
             #endif
             #ifdef touch_CAPSENSE
                 lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiii", capsense.data[0], capsense.data[1],capsense.data[2],
@@ -565,10 +604,27 @@ void loop() {
     if (puara.IP2_ready()) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/capsense");
             #ifdef touch_TRILL
-                lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                if (TSTICK_SIZE == 30) {
+                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
                     touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
-                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14]
-            );
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29]);
+                } else if (TSTICK_SIZE == 45) {
+                    // Send data from the both boards
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
+                    touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
+                    touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
+                }
+                else {
+                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                        touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                        touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14]);
+                }
             #endif
             #ifdef touch_CAPSENSE
                 lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiii", capsense.data[0], capsense.data[1],capsense.data[2],
