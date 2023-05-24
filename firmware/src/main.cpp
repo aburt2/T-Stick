@@ -566,6 +566,17 @@ void loop() {
                     touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
                     touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
                     touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
+                } else if (TSTICK_SIZE == 60) {
+                    // Send data from the first board
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
+                    touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
+                    touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14], touch2.touch[15], touch2.touch[16],touch2.touch[17],
+                    touch2.touch[18],touch2.touch[19],touch2.touch[20], touch2.touch[21], touch2.touch[22], touch2.touch[23],
+                    touch2.touch[24], touch2.touch[25], touch2.touch[26], touch2.touch[27], touch2.touch[28], touch2.touch[29]);
                 }
                 else {
                     lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
@@ -612,13 +623,24 @@ void loop() {
                     touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29]);
                 } else if (TSTICK_SIZE == 45) {
                     // Send data from the both boards
-                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
                     touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
                     touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
                     touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
                     touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
                     touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
                     touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
+                } else if (TSTICK_SIZE == 60) {
+                    // Send data from the first board
+                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
+                    touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
+                    touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
+                    touch.touch[24], touch.touch[25], touch.touch[26], touch.touch[27], touch.touch[28], touch.touch[29], touch2.touch[0], touch2.touch[1],touch2.touch[2],
+                    touch2.touch[3],touch2.touch[4],touch2.touch[5], touch2.touch[6], touch2.touch[7], touch2.touch[8],
+                    touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14], touch2.touch[15], touch2.touch[16],touch2.touch[17],
+                    touch2.touch[18],touch2.touch[19],touch2.touch[20], touch2.touch[21], touch2.touch[22], touch2.touch[23],
+                    touch2.touch[24], touch2.touch[25], touch2.touch[26], touch2.touch[27], touch2.touch[28], touch2.touch[29]);
                 }
                 else {
                     lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
