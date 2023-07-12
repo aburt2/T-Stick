@@ -1,0 +1,47 @@
+{
+    "imu":{
+        "name":"imu",
+        "commType": "I2C",
+        "address": "0x6A",
+        "isActive":0,
+        "isEnabled":1,
+        "initidx":0,
+        "pollidx":0
+    },
+    "trillcraft1":{
+        "name":"imu",
+        "commType": "I2C",
+        "address":"0x30",
+        "isActive":0,
+        "isEnabled":1,
+        "initidx":1,
+        "pollidx":1
+    },
+    "trillcraft2":{
+        "name":"imu",
+        "commType": "I2C",
+        "address":"0x31",
+        "isActive":0,
+        "isEnabled":1,
+        "initidx":1,
+        "pollidx":1
+    },
+    "button":{
+        "name":"imu",
+        "commType": "GPIO",
+        "address":"15",
+        "isActive":0,
+        "isEnabled":1,
+        "initidx":2,
+        "pollidx":2
+    },
+    "fsr":{
+        "name":"imu",
+        "commType": "GPIO",
+        "address":"33",
+        "isActive":0,
+        "isEnabled":1,
+        "initidx":3,
+        "pollidx":3
+    }
+}

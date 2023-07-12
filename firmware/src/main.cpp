@@ -13,7 +13,7 @@
 unsigned int firmware_version = 220929;
 
 // set the amount of capacitive stripes for the sopranino (15) or soprano (30)
-#define TSTICK_SIZE 45
+#define TSTICK_SIZE 60
 
 /*
   Choose the capacitive sensing board
@@ -331,7 +331,7 @@ void setup() {
             } else {
                 std::cout << "first touch initialization failed!" << std::endl;
             }
-            if (touch2.initTouch(0x31)) {
+            if (touch2.initTouch(0x32)) {
                 touch2.touchSize = TSTICK_SIZE - 30;
                 std::cout << "second touch done" << std::endl;
             } else {
@@ -568,7 +568,7 @@ void loop() {
                     touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
                 } else if (TSTICK_SIZE == 60) {
                     // Send data from the first board
-                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    lo_send(osc1, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
                     touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
                     touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
                     touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
@@ -632,7 +632,7 @@ void loop() {
                     touch2.touch[9], touch2.touch[10], touch2.touch[11], touch2.touch[12], touch2.touch[13], touch2.touch[14]);
                 } else if (TSTICK_SIZE == 60) {
                     // Send data from the first board
-                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
+                    lo_send(osc2, oscNamespace.c_str(), "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", touch.touch[0], touch.touch[1],touch.touch[2],
                     touch.touch[3],touch.touch[4],touch.touch[5], touch.touch[6], touch.touch[7], touch.touch[8],
                     touch.touch[9], touch.touch[10], touch.touch[11], touch.touch[12], touch.touch[13], touch.touch[14], touch.touch[15], touch.touch[16],touch.touch[17],
                     touch.touch[18],touch.touch[19],touch.touch[20], touch.touch[21], touch.touch[22], touch.touch[23],
