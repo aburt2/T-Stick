@@ -1,5 +1,5 @@
-// Include se
-# include "sensors.h"
+// Include sensor manager
+# include "sensormanager.h"
 
 //Define static members
 esp_vfs_spiffs_conf_t sensorManager::spiffs_config;
@@ -11,22 +11,15 @@ std::vector<uint8_t> sensorManager::inactiveGPIO;
 std::vector<uint8_t> sensorManager::activeGPIO;  
 std::map<uint8_t, sensorManager::sensorInfo> sensorManager::sensorMap;
 
-int sensorManager::initSensorManager() {
+int sensorManager::initSensorManager(std::vector<sensor> sensorClass) {
     config_spiffs();    
     read_json();
     for (auto &sensor : sensorMap) {
         if (sensor.second.enabled) {
-            if (sensor.second.commType == "I2C") {
-                inactiveI2C.push_back(sensor.second.address);
-            } else if (sensor.second.commType == "GPIO") {
-                inactiveGPIO.push_back(sensor.second.address);
-            } else {
-                std::cout 
-                << "\nInvalid Communication type " << sensor.second.commType << " for sensor " << sensor.second.name << "\n"
-                << "Communication type must be either I2C or GPIO" << "\n"
-                << "Sensor will not be added to sensorManager" << "\n"
-                << std::endl;
-            }
+            // Add sensor class
+            sensor.second.sensorObject = sensorClass[sensor.second.classIdx];
+            // Add to inactive I2C list
+            updateInactiveList(sensor.second);
         }
     }   
     return 1;
@@ -124,8 +117,7 @@ void sensorManager::read_json_internal(std::string& contents) {
         tmp.address =  cJSON_GetObjectItem(subitem, "address")->valueint;
         tmp.active = cJSON_GetObjectItem(subitem, "isActive")->valueint;
         tmp.enabled = cJSON_GetObjectItem(subitem, "isEnabled")->valueint;
-        tmp.initidx = cJSON_GetObjectItem(subitem, "initidx")->valueint;
-        tmp.pollidx = cJSON_GetObjectItem(subitem, "pollidx")->valueint;
+        tmp.classIdx = cJSON_GetObjectItem(subitem, "classIdx")->valueint;
 
         // Print collected sensor data
         std::cout << "\njson: Sensor added:\n\n"
@@ -212,6 +204,53 @@ void sensorManager::scanActiveI2C() {
     }
 }
 
-int sensorManager::initSensors(std::vector<FnPtr> initFunctions) {
-    
+int sensorManager::initSensors() {
+    for (auto &sensor : sensorMap) {
+        if (sensor.second.enabled && sensor.second.active) {
+            //Initialise sensor
+            if (sensor.second.sensorObject.init(sensor.second.address)) {
+                std::cout 
+                << "Sensor " << sensor.second.name << "initialised successfuly" << "\n"
+                << std::endl;
+            } else {
+                std::cout 
+                << "Sensor " << sensor.second.name << "failed to initialised" << "\n"
+                << std::endl;
+                // update inactive sensor list
+                sensor.second.active = false;
+                updateInactiveList(sensor.second);
+            }
+        }
+    }
+}
+
+int sensorManager::getSensorData() {
+    for (auto &sensor : sensorMap) {
+        if (sensor.second.enabled && sensor.second.active) {
+            //Initialise sensor
+            if (sensor.second.sensorObject.readData()) {
+            } else {
+                std::cout 
+                << "Failed to get data for sensor " << sensor.second.name << "\n"
+                << std::endl;
+                // update inactive sensor list
+                sensor.second.active = false;
+                updateInactiveList(sensor.second);
+            }
+        }
+    }
+}
+
+void sensorManager::updateInactiveList(sensorManager::sensorInfo inactiveSensor) {
+    if (inactiveSensor.commType == "I2C") {
+        inactiveI2C.push_back(inactiveSensor.address);
+    } else if (inactiveSensor.commType == "GPIO") {
+        inactiveGPIO.push_back(inactiveSensor.address);
+    } else {
+        std::cout 
+        << "\nInvalid Communication type " << inactiveSensor.commType << " for sensor " << inactiveSensor.name << "\n"
+        << "Communication type must be either I2C or GPIO" << "\n"
+        << "Sensor will not be added to sensorManager" << "\n"
+        << std::endl;
+    }
 }

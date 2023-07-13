@@ -12,6 +12,13 @@
 #include "capsense.h"
 
 #define BUTTON_STAT 0xAA  // Address to read the status of the sensors (2 bytes)
+bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
+    return initialise(sensoraddress);
+}
+
+bool sensor::readData() {
+    return getSensorData();
+}
 
 void Capsense::capsenseRequest(uint8_t address,uint8_t request, uint8_t answer_size) {
 
@@ -39,7 +46,7 @@ void Capsense::capsenseRequest(uint8_t address,uint8_t request, uint8_t answer_s
       Wire.endTransmission();
 }
 
-void Capsense::initCapsense(uint8_t I2C_ADDR) {
+bool Capsense::initCapsense(uint8_t I2C_ADDR) {
   uint8_t SYSTEM_STATUS = 0x8A;
   uint8_t I2C_ADDR_STORE = 0x51;
   uint8_t FAMILY_ID = 0x8F; // Must be 154
@@ -88,7 +95,7 @@ void Capsense::initCapsense(uint8_t I2C_ADDR) {
     printf("%u %u\n",answer1, answer2);
 }
 
-void Capsense::capsense_scan() {
+bool Capsense::initialise(uint8_t I2C_ADDR) {
   uint8_t I2C_ADDR;
   uint8_t FAMILY_ID = 0x8F; // Must be 154
   uint8_t address[8];
@@ -96,7 +103,6 @@ void Capsense::capsense_scan() {
   printf("Scanning for CY8CMBR3116 Capsense boards...\n");
 
   printf("    checking default capsense I2C_ADDR (37)\n");
-  I2C_ADDR = 0x37;
   capsenseRequest(I2C_ADDR, FAMILY_ID, 1);
   if (answer1 == 154) {
       printf("I2C device found at address 0x");
@@ -138,28 +144,36 @@ void Capsense::capsense_scan() {
   }
   if (nCapsenses == 0) {
     printf("\n\nOops ... unable to initialize IDMIL's Capsense. Check your wiring/board!\n\n\n");
+    return 0;
   }
   else {
     printf("Capsense OK\n\n");
   }
   touchStripsSize = nCapsenses*16;
+  return 1;
 }
 
-int Capsense::getData(int data_index) {
+int Capsense::getCapsenseData(int data_index) {
     return Capsense::data[data_index];
 }
 
-void Capsense::readCapsense() {
+bool Capsense::getSensorData() {
   // Read capsense touch data
     for (int i=0; i < nCapsenses; ++i) {
         capsenseRequest(capsense_addresses[i],BUTTON_STAT, 2);
-        touch[i*2] = answer1;
-        touch[(i*2)+1] = answer2;
+        if (answer1 == 154) {
+          touch[i*2] = answer1;
+          touch[(i*2)+1] = answer2;
+        } else {
+          // couldn't read from capsense
+          return 0;
+        }
     }
     for (int i=0; i < touchStripsSize; ++i) {
         data[i] = bitReadRightToLeft(touch[i/8],(i%8));
         //data[i] = bitReadRightToLeft(touch[i/8],7-(i%8));
     }
+    return 1;
 }
 
 int Capsense::bitReadLeftToRight (int number, int position, int type_size) {

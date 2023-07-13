@@ -1,9 +1,15 @@
 // Include Bela Trill Libraries
 
 #include "touch.h"
+bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
+    return initialise(sensoraddress, extraParam);
+}
 
+bool sensor::readData() {
+    return getSensorData();
+}
 
-uint8_t Touch::initTouch(uint8_t I2C_ADDR) {
+bool Touch::initialise(uint8_t I2C_ADDR) {
     int ret = trillSensor.setup(Trill::TRILL_CRAFT,I2C_ADDR);
     if(ret != 0) {
         Serial.println("failed to initialise trillSensor");
@@ -14,13 +20,14 @@ uint8_t Touch::initTouch(uint8_t I2C_ADDR) {
     return 1;
 }
 
-void Touch::readTouch() {
+bool Touch::getSensorData() {
     trillSensor.requestRawData();
     for (int i=0; i<30; i++) {
         if (trillSensor.rawDataAvailable() > 0) {
             Touch::data[i] = trillSensor.rawDataRead();
         }
     }
+    return 1;
 }
 
 int Touch::getData(int data_index) {

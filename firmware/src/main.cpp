@@ -432,7 +432,7 @@ void loop() {
     }
 
     // read IMU and update puara-gestures
-        if (imu.accelAvailable()) {
+    if (imu.accelAvailable()) {
         imu.readAccel();
         // In g's
         gestures.setAccelerometerValues(imu.calcAccel(imu.ax),

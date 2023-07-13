@@ -1,7 +1,7 @@
 // Create library for managing sensors
 
-#ifndef SENSOR_H
-#define SENSOR_H
+#ifndef SENSORMANAGER_H
+#define SENSORMANAGER_H
 #include <esp_spiffs.h>
 #include <cJSON.h>
 #include <stdio.h>
@@ -20,18 +20,29 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-typedef int (*FnPtr)(int, int);
+#include <sensor.h>
 
 class sensorManager {
     public:
-        int initSensorManager();
+        int initSensorManager(std::vector<sensor> sensorClass);
         void scanInactiveI2C();
         void scanActiveI2C();
-        int initSensors(std::vector<FnPtr> initFunctions);
-        uint8_t getSensorData(std::vector<FnPtr> pollFunctions);
+        int initSensors();
+        int getSensorData();
         void changeSensorStatus();
         void updateScanInterval();
-
+        // Sensor info
+        struct sensorInfo {
+            std::string name;
+            std::string sensorType;
+            std::string commType;
+            uint8_t address;
+            bool active;
+            bool enabled;
+            int classIdx;
+            sensor sensorObject;
+        };
+        void updateInactiveList(sensorInfo);
 
         // JSON reading functions
         static void read_json();
@@ -48,15 +59,6 @@ class sensorManager {
         static const bool spiffs_format_if_mount_failed = false;
     private:
         int scanInterval = 1;
-        struct sensorInfo {
-            std::string name;
-            std::string commType;
-            uint8_t address;
-            bool active;
-            bool enabled;
-            int initidx;
-            int pollidx;
-        };
         static std::vector<sensorInfo> sensors;
         static std::vector<uint8_t> inactiveI2C;
         static std::vector<uint8_t> activeI2C;

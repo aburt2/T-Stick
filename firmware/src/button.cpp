@@ -2,8 +2,15 @@
 // Button (or button) function
 
 #include "button.h"
+bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
+    return initialise(sensoraddress, extraParam);
+}
 
-void Button::readButton() {
+bool sensor::readData() {
+    return getSensorData();
+}
+
+bool Button::getSensorData() {
     buttonState = !digitalRead(pin);
     if (buttonState) {
         if (!Button::button) {
@@ -25,9 +32,10 @@ void Button::readButton() {
             Button::timer = millis();
         }
     }
+    return 1;
 }
 
-bool Button::initButton(int &buttonPin) {
+bool Button::initialise(int &buttonPin) {
     Button::pin = buttonPin;
     pinMode(Button::pin, INPUT_PULLUP);
     return 1;

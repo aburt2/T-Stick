@@ -12,13 +12,14 @@ Based on Alex Nieva's capsense Arduino code (IDMIL, 2019)
 //#include <stdint.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <sensor.h>
 
-class Capsense {
+class Capsense : public sensor {
     public:
-        void initCapsense(uint8_t I2C_ADDR);
-        void capsense_scan();
-        void readCapsense();
-        int getData(int data_index);
+        bool initCapsense(uint8_t I2C_ADDR);
+        bool initialise(uint8_t I2C_ADDR);
+        bool getSensorData();
+        int getCapsenseData(int data_index);
         int data[64];
         int touch[8]; // /raw/capsense, i..., 0--255, ... (1 int per 8 capacitive stripes -- 8 bits) - originaly RawData.touch
         uint8_t touchStripsSize;

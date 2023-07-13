@@ -6,11 +6,12 @@
 
 #include <Arduino.h>
 #include <Trill.h>
+#include <sensor.h>
 
-class Touch {
+class Touch : public sensor{
     public:
-        uint8_t initTouch(uint8_t I2C_ADDR = 0x30);
-        void readTouch();
+        bool initialise(uint8_t I2C_ADDR = 0x30);
+        bool getSensorData();
         int getData(int data_index);
         Trill trillSensor;      // for Trill Craft
         int data[30];
