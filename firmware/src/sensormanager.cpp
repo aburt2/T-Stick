@@ -10,19 +10,27 @@ std::vector<uint8_t> sensorManager::activeI2C;
 std::vector<uint8_t> sensorManager::inactiveGPIO;
 std::vector<uint8_t> sensorManager::activeGPIO;  
 std::map<uint8_t, sensorManager::sensorInfo> sensorManager::sensorMap;
+std::map<std::string, uint8_t> sensorManager::nameMap;
 
 int sensorManager::initSensorManager(std::vector<sensor> sensorClass) {
+    //Read Config data
     config_spiffs();    
     read_json();
-    for (auto &sensor : sensorMap) {
-        if (sensor.second.enabled) {
+
+    //Set up inactive list
+    for (auto &sensorPair : sensorMap) {
+        if (sensorPair.second.enabled) {
             // Add sensor class
-            sensor.second.sensorObject = sensorClass[sensor.second.classIdx];
+            sensorPair.second.sensorObject = sensorClass[sensorPair.second.classIdx];
+            std::cout 
+            << "Added Sensor " << sensorPair.second.name << " class object." << "\n"
+            << std::endl;
             // Add to inactive I2C list
-            updateInactiveList(sensor.second);
+            sensorManager::updateInactiveList(sensorPair.second);
         }
-    }   
-    return 1;
+    }
+    //Initialise Sensors
+    return sensorManager::initSensors();
 }
 
 void sensorManager::config_spiffs() {
@@ -82,7 +90,7 @@ void sensorManager::read_json() { // Deserialize
     std::cout << "json: Mounting FS" << std::endl;
     sensorManager::mount_spiffs();
 
-    std::cout << "json: Opening config json file" << std::endl;
+    std::cout << "json: Opening sensor config json file" << std::endl;
     FILE* f = fopen("/spiffs/sensordefs.json", "r");
     if (f == NULL) {
         std::cout << "json: Failed to open file" << std::endl;
@@ -101,23 +109,30 @@ void sensorManager::read_json() { // Deserialize
 }
 
 void sensorManager::read_json_internal(std::string& contents) {
+    // counter for sensors
+    int nSensors;
     // inspired from puara read_config_json_internal
     std::cout << "json: Getting data" << std::endl;
     cJSON *root = cJSON_Parse(contents.c_str());
-    cJSON *item = cJSON_GetObjectItem(root,"items");
-    int i;
+    cJSON *setting = NULL;
+    cJSON *settings = NULL;
+    
+    std::cout << "json: Parse sensor settings information" << std::endl;
+    settings = cJSON_GetObjectItemCaseSensitive(root, "sensorsettings");
+
     // loop through each item
-    for (i = 0 ; i < cJSON_GetArraySize(item) ; i++) {
+    std::cout << "json: Extract Sensor info" << std::endl;
+    cJSON_ArrayForEach(setting, settings) {
         // create temperary struture
         sensorManager::sensorInfo tmp;
+
         // Fill with data
-        cJSON * subitem = cJSON_GetArrayItem(item, i);
-        tmp.name = cJSON_GetObjectItem(subitem, "name")->valuestring;
-        tmp.commType = cJSON_GetObjectItem(subitem, "commType")->valuestring;
-        tmp.address =  cJSON_GetObjectItem(subitem, "address")->valueint;
-        tmp.active = cJSON_GetObjectItem(subitem, "isActive")->valueint;
-        tmp.enabled = cJSON_GetObjectItem(subitem, "isEnabled")->valueint;
-        tmp.classIdx = cJSON_GetObjectItem(subitem, "classIdx")->valueint;
+        tmp.name = cJSON_GetObjectItem(setting, "name")->valuestring;
+        tmp.commType = cJSON_GetObjectItem(setting, "commType")->valuestring;
+        tmp.address =  cJSON_GetObjectItem(setting, "address")->valueint;
+        tmp.active = cJSON_GetObjectItem(setting, "isActive")->valuedouble;
+        tmp.enabled = cJSON_GetObjectItem(setting, "isEnabled")->valuedouble;
+        tmp.classIdx = cJSON_GetObjectItem(setting, "classIdx")->valuedouble;
 
         // Print collected sensor data
         std::cout << "\njson: Sensor added:\n\n"
@@ -131,8 +146,17 @@ void sensorManager::read_json_internal(std::string& contents) {
         // Add to sensor array
         sensors.push_back(tmp);
         sensorMap[tmp.address] = tmp;
+        nameMap[tmp.name] = tmp.address;
+
+        //Increment Sensor counter
+        nSensors++;
     }
     cJSON_Delete(root);
+
+    // If no sensors were initialised flag user 
+    if (nSensors == 0) {
+        std::cout << "No sensors initialised, check sensor config" << "\n" << std::endl;
+    }
 }
 
 void sensorManager::scanInactiveI2C() {
@@ -147,6 +171,9 @@ void sensorManager::scanInactiveI2C() {
         // The i2c_scanner uses the return value of
         // the Write.endTransmisstion to see if
         // a device did acknowledge to the address.
+        std::cout 
+        << "Looking for sensor  " << sensorMap[address].name << "\n"
+        << std::endl;
         Wire.beginTransmission(address);
         error = Wire.endTransmission();
         if (error == 0)
@@ -158,7 +185,7 @@ void sensorManager::scanInactiveI2C() {
             << std::endl;
             nDevices++;
         }
-        else if (error==4)
+        else
         {
             ++it;
             std::cout 
@@ -205,23 +232,30 @@ void sensorManager::scanActiveI2C() {
 }
 
 int sensorManager::initSensors() {
-    for (auto &sensor : sensorMap) {
-        if (sensor.second.enabled && sensor.second.active) {
+    // Scan inactive sensors
+    sensorManager::scanInactiveI2C();
+
+    // Initialise Detected Sensors
+    for (auto & sensorPair : sensorMap) {
+        if (sensorPair.second.enabled && sensorPair.second.active) {
             //Initialise sensor
-            if (sensor.second.sensorObject.init(sensor.second.address)) {
+            if (sensorPair.second.sensorObject.init(sensorPair.second.address)) {
                 std::cout 
-                << "Sensor " << sensor.second.name << "initialised successfuly" << "\n"
+                << "Sensor " << sensorPair.second.name << "initialised successfuly" << "\n"
                 << std::endl;
             } else {
                 std::cout 
-                << "Sensor " << sensor.second.name << "failed to initialised" << "\n"
+                << "Sensor " << sensorPair.second.name << "failed to initialised" << "\n"
                 << std::endl;
                 // update inactive sensor list
-                sensor.second.active = false;
-                updateInactiveList(sensor.second);
+                sensorPair.second.active = false;
+                sensorManager::updateInactiveList(sensorPair.second);
             }
         }
     }
+
+    // Return 1 on completion
+    return 1;
 }
 
 int sensorManager::getSensorData() {
@@ -239,13 +273,17 @@ int sensorManager::getSensorData() {
             }
         }
     }
+    // return 1 for completion
+    return 1;
 }
 
 void sensorManager::updateInactiveList(sensorManager::sensorInfo inactiveSensor) {
-    if (inactiveSensor.commType == "I2C") {
+    std::string commtype ("I2C");
+    if (inactiveSensor.commType == commtype) {
         inactiveI2C.push_back(inactiveSensor.address);
-    } else if (inactiveSensor.commType == "GPIO") {
-        inactiveGPIO.push_back(inactiveSensor.address);
+        std::cout 
+        << "Sensor " << inactiveSensor.name << "added to inactive list" << "\n"
+        << std::endl;
     } else {
         std::cout 
         << "\nInvalid Communication type " << inactiveSensor.commType << " for sensor " << inactiveSensor.name << "\n"
@@ -253,4 +291,21 @@ void sensorManager::updateInactiveList(sensorManager::sensorInfo inactiveSensor)
         << "Sensor will not be added to sensorManager" << "\n"
         << std::endl;
     }
+}
+
+bool sensorManager::checkSensorStatus(std::string sensorName)  {
+    uint8_t i2caddress = nameMap[sensorName];
+    if (sensorMap[i2caddress].active) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+sensor sensorManager::getSensorObject(std::string sensorName) {
+    // Get the i2c address of the sensor
+    uint8_t i2caddress = nameMap[sensorName];
+
+    // Return the sensor object
+    return sensorMap[i2caddress].sensorObject;
 }

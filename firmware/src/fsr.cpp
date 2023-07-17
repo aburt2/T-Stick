@@ -1,14 +1,6 @@
 // FSR function
 
 #include "fsr.h"
-bool sensor::init(uint8_t sensoraddress, uint8_t extraParam = 0) {
-    return initialise(sensoraddress, extraParam);
-}
-
-bool sensor::readData() {
-    return getSensorData();
-}
-
 bool Fsr::initialise(int &fsr_pin, int offsetValue){
     Fsr::pin = fsr_pin;
     Fsr::offset = offsetValue;

@@ -1,13 +1,5 @@
 #include "imu.h"
 
-bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
-    return initialise(sensoraddress);
-}
-
-bool sensor::readData() {
-    return getSensorData();
-}
-
 bool IMU::initialise(uint8_t I2C_ADDR) {
     Wire.begin();
 
@@ -128,23 +120,23 @@ bool IMU::getSensorData() {
     if (imuSensor.accelAvailable()) {
         imuSensor.readAccel();
         // Save data
-        ax = imuSensor.ax;
-        ay = imuSensor.ay;
-        az = imuSensor.az;
+        ax = imuSensor.calcAccel(imuSensor.ax);
+        ay = imuSensor.calcAccel(imuSensor.ay);
+        az = imuSensor.calcAccel(imuSensor.az);
     }
     if (imuSensor.gyroAvailable()) {
         imuSensor.readGyro();
         // Save data
-        gx = imuSensor.gx;
-        gy = imuSensor.gy;
-        gz = imuSensor.gz;
+        gx = imuSensor.calcGyro(imuSensor.gx);
+        gy = imuSensor.calcGyro(imuSensor.gy);
+        gz = imuSensor.calcGyro(imuSensor.gz);
     }
     if (imuSensor.magAvailable()) {
         imuSensor.readMag();
         // Save data
-        mx = imuSensor.mx;
-        my = imuSensor.my;
-        mz = imuSensor.mz;
+        mx = imuSensor.calcMag(imuSensor.mx);
+        my = imuSensor.calcMag(imuSensor.my);
+        mz = imuSensor.calcMag(imuSensor.mz);
     }
     return 1;
 }

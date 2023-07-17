@@ -24,25 +24,20 @@
 
 class sensorManager {
     public:
-        int initSensorManager(std::vector<sensor> sensorClass);
-        void scanInactiveI2C();
-        void scanActiveI2C();
-        int initSensors();
-        int getSensorData();
-        void changeSensorStatus();
-        void updateScanInterval();
-        // Sensor info
+        // Sensor information structure
         struct sensorInfo {
             std::string name;
             std::string sensorType;
             std::string commType;
-            uint8_t address;
+            int address;
             bool active;
             bool enabled;
             int classIdx;
             sensor sensorObject;
         };
-        void updateInactiveList(sensorInfo);
+        // Initialisation Functions
+        int initSensorManager(std::vector<sensor> sensorClass);
+        int initSensors();
 
         // JSON reading functions
         static void read_json();
@@ -57,6 +52,21 @@ class sensorManager {
         static std::string spiffs_base_path;
         static const uint8_t spiffs_max_files = 10;
         static const bool spiffs_format_if_mount_failed = false;
+
+
+        // I2C Scanning functions
+        void scanInactiveI2C();
+        void scanActiveI2C();
+        void updateInactiveList(sensorInfo);
+        
+        // Sensor data functions
+        int getSensorData();
+        void changeSensorStatus();
+        void updateScanInterval();
+
+        // Return sensor info
+        bool checkSensorStatus(std::string sensorName);
+        sensor getSensorObject(std::string sensorName);
     private:
         int scanInterval = 1;
         static std::vector<sensorInfo> sensors;
@@ -64,7 +74,8 @@ class sensorManager {
         static std::vector<uint8_t> activeI2C;
         static std::vector<uint8_t> inactiveGPIO;
         static std::vector<uint8_t> activeGPIO;  
-        static std::map<uint8_t, sensorInfo> sensorMap;      
+        static std::map<uint8_t, sensorInfo> sensorMap;   
+        static std::map<std::string, uint8_t> nameMap;      
 };
 
 #endif

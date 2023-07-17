@@ -12,14 +12,6 @@
 #include "capsense.h"
 
 #define BUTTON_STAT 0xAA  // Address to read the status of the sensors (2 bytes)
-bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
-    return initialise(sensoraddress);
-}
-
-bool sensor::readData() {
-    return getSensorData();
-}
-
 void Capsense::capsenseRequest(uint8_t address,uint8_t request, uint8_t answer_size) {
 
     uint8_t SYSTEM_STATUS = 0x8A;
@@ -96,7 +88,6 @@ bool Capsense::initCapsense(uint8_t I2C_ADDR) {
 }
 
 bool Capsense::initialise(uint8_t I2C_ADDR) {
-  uint8_t I2C_ADDR;
   uint8_t FAMILY_ID = 0x8F; // Must be 154
   uint8_t address[8];
   

@@ -1,13 +1,6 @@
 // Include Bela Trill Libraries
 
 #include "touch.h"
-bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
-    return initialise(sensoraddress, extraParam);
-}
-
-bool sensor::readData() {
-    return getSensorData();
-}
 
 bool Touch::initialise(uint8_t I2C_ADDR) {
     int ret = trillSensor.setup(Trill::TRILL_CRAFT,I2C_ADDR);

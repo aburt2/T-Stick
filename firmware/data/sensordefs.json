@@ -1,47 +1,49 @@
 {
-    "imu":{
-        "name":"imu",
-        "sensorType":"imu",
-        "commType": "I2C",
-        "address": "0x6A",
-        "isActive":0,
-        "isEnabled":1,
-        "classIdx":0
-    },
-    "trillcraft1":{
-        "name":"trillcraft1",
-        "sensorType":"touch",
-        "commType": "I2C",
-        "address":"0x30",
-        "isActive":0,
-        "isEnabled":1,
-        "classIdx":1
-    },
-    "trillcraft2":{
-        "name":"trillcraft2",
-        "sensorType":"touch",
-        "commType": "I2C",
-        "address":"0x31",
-        "isActive":0,
-        "isEnabled":1,
-        "classIdx":2
-    },
-    "button":{
-        "name":"button",
-        "sensorType":"button",
-        "commType": "GPIO",
-        "address":15,
-        "isActive":0,
-        "isEnabled":1,
-        "classIdx":3
-    },
-    "fsr":{
-        "name":"fsr",
-        "sensorType":"fsr",
-        "commType": "GPIO",
-        "address":33,
-        "isActive":0,
-        "isEnabled":1,
-        "classIdx":4
-    }
+    "sensorsettings": [
+        {
+            "name":"imu",
+            "sensorType":"imu",
+            "commType": "I2C",
+            "address": 106,
+            "isActive":0,
+            "isEnabled":1,
+            "classIdx":0
+        },
+        {
+            "name":"trillcraft1",
+            "sensorType":"touch",
+            "commType": "I2C",
+            "address":48,
+            "isActive":0,
+            "isEnabled":1,
+            "classIdx":1
+        },
+        {
+            "name":"trillcraft2",
+            "sensorType":"touch",
+            "commType": "I2C",
+            "address":49,
+            "isActive":0,
+            "isEnabled":0,
+            "classIdx":2
+        },
+        {
+            "name":"battery",
+            "sensorType":"fuelgauge",
+            "commType": "I2C",
+            "address":54,
+            "isActive":0,
+            "isEnabled":1,
+            "classIdx":3
+        },
+        {
+            "name":"battery2",
+            "sensorType":"fuelgauge",
+            "commType": "I2C",
+            "address":11,
+            "isActive":0,
+            "isEnabled":0,
+            "classIdx":4
+        }
+    ]
 }

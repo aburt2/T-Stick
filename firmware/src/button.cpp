@@ -2,14 +2,6 @@
 // Button (or button) function
 
 #include "button.h"
-bool sensor::init(uint8_t sensoraddress, uint8_t extraParam) {
-    return initialise(sensoraddress, extraParam);
-}
-
-bool sensor::readData() {
-    return getSensorData();
-}
-
 bool Button::getSensorData() {
     buttonState = !digitalRead(pin);
     if (buttonState) {
