@@ -284,23 +284,23 @@ int sensorManager::initSensors() {
     return 1;
 }
 
-int sensorManager::getSensorData() {
-    // Get data from each sensor
-    for (auto &sensor : sensorMap) {
-        if (sensor.second.enabled && sensor.second.active) {
-            //Initialise sensor
-            if (sensor.second.sensorObject.readData()) {
-            } else {
-                std::cout 
-                << "Failed to get data for sensor " << sensor.second.name << "\n"
-                << std::endl;
-                // update inactive sensor list
-                sensor.second.active = false;
-                updateInactiveList(sensor.second);
-            }
-        }
+int sensorManager::getSensorData(std::string sensorName) {
+    // create i2c address variable
+    uint8_t i2caddress = nameMap[sensorName];
+
+    // Get data from the sensor
+    if (sensorMap[i2caddress].active) {
+        if (!sensorMap[i2caddress].sensorObject.readData()) {
+            std::cout 
+            << "Failed to get data for sensor " << sensorName << "\n"
+            << std::endl;
+            // update inactive sensor list
+            sensorMap[i2caddress].active = false;
+            updateInactiveList(sensorMap[i2caddress]);
+        };
     }
-    // return 1 for completion
+
+    // Return 1 on completion
     return 1;
 }
 
@@ -321,8 +321,20 @@ void sensorManager::updateInactiveList(sensorManager::sensorInfo inactiveSensor)
 }
 
 bool sensorManager::checkSensorStatus(std::string sensorName)  {
+    // create i2c address variable
+    uint8_t i2caddress;
+
     // Check if a sensor is active
-    uint8_t i2caddress = nameMap[sensorName];
+    if (nameMap.find(sensorName) == nameMap.end()) {
+        std::cout 
+        << "Failed to find config for sensor " << sensorName << "\n"
+        << std::endl;
+        return false;
+    } else {
+        i2caddress = nameMap[sensorName];
+    }
+
+    // Check if a sensor is active
     if (sensorMap[i2caddress].active) {
         return true;
     } else {

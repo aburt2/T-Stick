@@ -60,7 +60,7 @@ class sensorManager {
         void updateInactiveList(sensorInfo);
         
         // Sensor data functions
-        int getSensorData();
+        int getSensorData(std::string sensorName);
         void changeSensorStatus();
         void updateScanInterval();
 

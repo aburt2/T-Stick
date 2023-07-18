@@ -10,7 +10,7 @@
  */
 
 
-unsigned int firmware_version = 220929;
+unsigned int firmware_version = 230801;
 
 // set the amount of capacitive stripes for the sopranino (15) or soprano (30)
 #define TSTICK_SIZE 60
@@ -311,7 +311,11 @@ struct Event {
 // Timing variables
 const uint32_t LIBMAPPER_UPDATE_RATE = 1000; // 1000Hz
 const uint32_t OSC_UPDATE_RATE = 1000; // 1000Hz
-const uint32_t SENSOR_READ_RATE = 1000; // 1000Hz
+const uint32_t TOUCH_READ_RATE = 1000; // 1000Hz
+const uint32_t IMU_READ_RATE = 1000; // 1000Hz
+const uint32_t GPIO_READ_RATE = 1000; // 1000Hz
+const uint32_t GESTURE_UPDATE_RATE = 1000; // 1000Hz
+const uint32_t BATTERY_READ_RATE = TASK_SECOND; // 1000Hz
 const uint32_t POWER_STATUS_RATE = 10000; // 100Hz
 const uint32_t LED_STATUS_RATE = TASK_SECOND; // 1s
 const uint32_t MAINTENANCE_RATE = 30000000; // 30s
@@ -326,6 +330,10 @@ void updateOSC();
 #endif
 // Sensor functions
 void updateSensors();
+void getFuelGaugeData();
+void getIMUData();
+void getTouchData();
+void getGPIOData();
 void updatePowerStatus();
 void updateLED();
 
@@ -333,6 +341,7 @@ void updateLED();
 void scanInactiveSensors();
 void scanActiveSensors();
 void loadChecker();
+void updateTask();
 
 // Create Scheduler
 Scheduler runnerTstick;
@@ -354,8 +363,14 @@ Scheduler runnerTstick;
 // Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
 
 //==========T-Stick Tasks===========//
-// Sensor Tasks
-Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+// Fast Sensor Tasks
+Task TouchUpdate (TOUCH_READ_RATE, TASK_FOREVER, &getTouchData, &runnerTstick, true);
+Task IMUUpdate (IMU_READ_RATE, TASK_FOREVER, &getIMUData, &runnerTstick, true);
+Task FSRUpdate (GPIO_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+Task GestureUpdate (GESTURE_UPDATE_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+
+// Slow Sensor Tasks
+Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
 Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
 
 // Comms Tasks
@@ -369,7 +384,9 @@ Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateOSC, &runnerTstick,true);
 Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
 Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
 Task LEDStatusUpdate (LED_STATUS_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
+Task RenableTask (MAINTENANCE_RATE, TASK_FOREVER, &updateTask, &runnerTstick, true);
 //==========Functions for task scheduler===========//
+// Enable if you want to print task stats to the serial monitor
 //#define LOADCHECKING
 //================Maintenance Functions============//
 void loadChecker() {
@@ -381,6 +398,39 @@ void loadChecker() {
     << "Current Time: " << millis() << " Task" << t.getId() 
     <<" Task start delay = " << t.getStartDelay()
     << std::endl;
+}
+
+void updateTask () {
+    // Enable tasks for sensors that became active
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Renable Battery sensor
+    if (!BatteryUpdate.isEnabled()) {
+        if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
+            BatteryUpdate.enable();
+            std::cout << "Fuel Gauge Update task re-enabled" << std::endl;
+        }
+    }
+
+    // Reenable Touch sensors
+    if (!TouchUpdate.isEnabled()) {
+        if (sensormanager.checkSensorStatus("trillcraft1") && (sensormanager.status == 1)) {
+            sensormanager.getSensorData("trillcraft1");
+            TouchUpdate.enable();
+            std::cout << "Touch Sensor Update task re-enabled" << std::endl;
+        }
+    }
+    //Reenable IMU
+    if (!IMUUpdate.isEnabled()) {
+        if (sensormanager.checkSensorStatus("imu") && (sensormanager.status == 1)) {
+            sensormanager.getSensorData("imu");
+            IMUUpdate.enable();
+            std::cout << "IMU Update task re-enabled" << std::endl; 
+        }
+    }
 }
 
 void scanInactiveSensors() {
@@ -432,7 +482,7 @@ void updatePowerStatus() {
         esp_deep_sleep_start();
     }
 }
-//================Sensor Functions=================//
+
 void updateLED() {
     // Check load
     #ifdef LOADCHECKING
@@ -474,6 +524,73 @@ void updateLED() {
         }
     #endif  
 }
+//================Sensor Functions=================//
+void getFuelGaugeData() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Get the Sensor data
+    if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
+        sensormanager.getSensorData("battery");
+    } else {
+        // disable task if sensor is inactive
+        BatteryUpdate.disable();
+    }
+}
+
+void getTouchData() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Get the Sensor data
+    if (sensormanager.checkSensorStatus("trillcraft1") && (sensormanager.status == 1)) {
+        sensormanager.getSensorData("trillcraft1");
+    } else {
+        TouchUpdate.disable();
+    }
+}
+
+void getIMUData() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Get sensor data if the sensor is active
+    if (sensormanager.checkSensorStatus("imu") && (sensormanager.status == 1)) {
+        // Get the Sensor data
+        sensormanager.getSensorData("imu");
+
+        // Save IMU data to gestures array do this here as update inertial gestures crashes if buffers are empty
+        gestures.setAccelerometerValues(imu.ax,
+                                        imu.ay,
+                                        imu.az);
+        gestures.setGyroscopeValues(imu.gx,
+                                    imu.gy,
+                                    imu.gz);
+        gestures.setMagnetometerValues(imu.mx,
+                                    imu.my,
+                                    imu.mz);    
+        gestures.updateInertialGestures();                                   
+    } else {
+        IMUUpdate.disable();
+    }
+}
+
+void getGPIODATA() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Get button and fsr data
+    button.readButton();
+    fsr.readFsr();
+}
 
 void updateSensors() {
     // Check load
@@ -481,27 +598,7 @@ void updateSensors() {
     loadChecker();
     #endif
     
-    // Get button and fsr data
-    button.readButton();
-    fsr.readFsr();
-
-    if (sensormanager.status) {
-        // // Get the Sensor data
-        sensormanager.getSensorData();
-
-        // // Save IMU data to gestures array
-        if (sensormanager.checkSensorStatus("imu")) {
-            gestures.setAccelerometerValues(imu.ax,
-                                            imu.ay,
-                                            imu.az);
-            gestures.setGyroscopeValues(imu.gx,
-                                        imu.gy,
-                                        imu.gz);
-            gestures.setMagnetometerValues(imu.mx,
-                                        imu.my,
-                                        imu.mz);    
-            gestures.updateInertialGestures();                                   
-        }
+    if (sensormanager.status == 1) {
         // //Gesture update
         gestures.updateTrigButton(button.getButton());
 
