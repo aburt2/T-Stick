@@ -64,12 +64,20 @@ class sensorManager {
         void changeSensorStatus();
         void updateScanInterval();
 
+        // Get sensor manager details
+        int getnumInactiveSensors();
+        int getnumActiveSensors();
+        int getnumSensors();
+
         // Return sensor info
         bool checkSensorStatus(std::string sensorName);
         sensor getSensorObject(std::string sensorName);
 
         // Max failure
         int maxFailures = 5;
+
+        // status
+        int status = 0;
     private:
         int scanInterval = 1;
         static std::vector<sensorInfo> sensors;

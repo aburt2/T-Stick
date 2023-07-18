@@ -30,7 +30,10 @@ int sensorManager::initSensorManager(std::vector<sensor> sensorClass) {
         }
     }
     //Initialise Sensors
-    return sensorManager::initSensors();
+    status = sensorManager::initSensors();
+
+    // Return status
+    return status;
 }
 
 void sensorManager::config_spiffs() {
@@ -167,7 +170,6 @@ void sensorManager::scanInactiveI2C() {
     int nDevices;
     std::cout << "Scanning Inactive I2C devices..." << std::endl;
     nDevices = 0;
-    Wire.begin();
     for (auto it = inactiveI2C.begin(); it != inactiveI2C.end();)
     {
         address = *it;
@@ -183,9 +185,7 @@ void sensorManager::scanInactiveI2C() {
         {
             sensorMap[address].active = true;
             inactiveI2C.erase(it);
-            std::cout 
-            << "Sensor " << sensorMap[address].name << " has been found"
-            << std::endl;
+            std::cout << "Sensor " << sensorMap[address].name << " has been found" << std::endl;
             nDevices++;
         }
         else
@@ -194,7 +194,7 @@ void sensorManager::scanInactiveI2C() {
             if (sensorMap[address].numFailure == 0) {
                 std::cout 
                 << "Sensor " << sensorMap[address].name << " did not respond." << "\n"
-                << "Unknown error at address 0x" << int(address) 
+                << "Unknown error at address 0x" << int(address) << "\n"
                 << std::endl;
                 ++it;
             } else if (sensorMap[address].numFailure == maxFailures) {
@@ -206,6 +206,7 @@ void sensorManager::scanInactiveI2C() {
                 inactiveI2C.erase(it);
             } else {
                 ++it;
+                std::cout << "Sensor " << sensorMap[address].name << " did not respond." << std::endl;
             }
         }    
     }
@@ -220,7 +221,6 @@ void sensorManager::scanActiveI2C() {
     int nDevices;
     std::cout << "Scanning Active Sensor I2C devices..." << std::endl;
     nDevices = 0;
-    Wire.begin();
     for (auto it = activeI2C.begin(); it != activeI2C.end();)
     {
         address = *it;
@@ -233,8 +233,9 @@ void sensorManager::scanActiveI2C() {
         {
             nDevices++;
             ++it;
+            std::cout << "Sensor " << sensorMap[address].name << " responded." << std::endl;
         }
-        else if (error==4)
+        else
         {
             sensorMap[address].active = false;
             activeI2C.erase(it);
@@ -245,13 +246,18 @@ void sensorManager::scanActiveI2C() {
         }    
     }
     if (nDevices == 0) {
-        std::cout << "No I2C devices found" << std::endl;
+        std::cout << "No I2C devices found\n" << std::endl;
     } else {
-        std::cout << "done" << std::endl;
+        std::cout << "done\n" << std::endl;
     }
 }
 
 int sensorManager::initSensors() {
+    // Check there are any sensors at all
+    if (sensorManager::getnumSensors() == 0) {
+        // No sensors are in the sensor map
+        return 0;
+    }
     // Scan inactive sensors
     sensorManager::scanInactiveI2C();
 
@@ -315,6 +321,7 @@ void sensorManager::updateInactiveList(sensorManager::sensorInfo inactiveSensor)
 }
 
 bool sensorManager::checkSensorStatus(std::string sensorName)  {
+    // Check if a sensor is active
     uint8_t i2caddress = nameMap[sensorName];
     if (sensorMap[i2caddress].active) {
         return true;
@@ -329,4 +336,19 @@ sensor sensorManager::getSensorObject(std::string sensorName) {
 
     // Return the sensor object
     return sensorMap[i2caddress].sensorObject;
+}
+
+int sensorManager::getnumActiveSensors() {
+    // Get number of active sensors
+    return activeI2C.size();
+}
+
+int sensorManager::getnumInactiveSensors() {
+    // Get number of active sensors
+    return inactiveI2C.size();
+}
+
+int sensorManager::getnumSensors() {
+    // Get number of active sensors
+    return sensorMap.size();
 }

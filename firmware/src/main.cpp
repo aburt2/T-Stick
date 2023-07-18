@@ -24,10 +24,28 @@ unsigned int firmware_version = 220929;
 // #define touch_CAPSENSE
 
 /*
- Define libmapper
+ Define libmapper and OSC
 */
 #define LIBMAPPER
 #define OSC
+
+/*
+Define microcontroller
+//#define SPARKFUN_ESP32_THING_PLUS 1
+
+*/
+
+/*
+Select SDA and SCL Pins based on Micro controllers
+*/
+#ifdef SPARKFUN_ESP32_THING_PLUS
+const int SDA_PIN = 23;
+const int SCL_PIN = 22;
+#else
+const int SDA_PIN = 21;
+const int SCL_PIN = 22;
+#endif
+
 
 #include "Arduino.h"
 
@@ -291,22 +309,20 @@ struct Event {
 
 //*********************TASK SCHEDULING*******************************************//
 // Timing variables
-const uint32_t LIBMAPPER_POLL_RATE = 1000 ; // 100Hz
-const uint32_t LIBMAPPER_UPDATE_RATE = 1000 ; // 100Hz
-const uint32_t OSC_UPDATE_RATE = 1000 ; // 1000Hz
-const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
-const uint32_t SENSOR_READ_RATE = 1000; // 1kHz
+const uint32_t LIBMAPPER_UPDATE_RATE = 1000; // 1000Hz
+const uint32_t OSC_UPDATE_RATE = 1000; // 1000Hz
+const uint32_t SENSOR_READ_RATE = 1000; // 1000Hz
+const uint32_t POWER_STATUS_RATE = 10000; // 100Hz
+const uint32_t LED_STATUS_RATE = TASK_SECOND; // 1s
 const uint32_t MAINTENANCE_RATE = 30000000; // 30s
-
+const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
 
 // Communication Functions
 #ifdef LIBMAPPER
-void pollLibmapper();
 void updateLibmapper();
 #endif
 #ifdef OSC
-void updateContinuousOSC();
-void updateDiscreteOSC();
+void updateOSC();
 #endif
 // Sensor functions
 void updateSensors();
@@ -316,40 +332,99 @@ void updateLED();
 // Maintenance Functions
 void scanInactiveSensors();
 void scanActiveSensors();
-void reconnectWifi();
+void loadChecker();
 
 // Create Scheduler
 Scheduler runnerTstick;
-// Comms Tasks
-#ifdef LIBMAPPER
-Task libmapperPoll (LIBMAPPER_POLL_RATE, TASK_FOREVER, &pollLibmapper, &runnerTstick,true);
-Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
-#endif
-Task OSCContinuousUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateContinuousOSC, &runnerTstick,true);
-Task OSCDiscreteUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateDiscreteOSC, &runnerTstick,true);
 
+//==========Tasks to check overhead===========//
+// //Sensor Tasks
+// Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
+// Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
+// Task LEDStatusUpdate (LED_STATUS_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
+
+// // Comms Tasks
+// #ifdef LIBMAPPER
+// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick,true);
+// #endif
+// Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick,true);
+
+// // Maintenance Tasks
+// Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
+// Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
+
+//==========T-Stick Tasks===========//
 // Sensor Tasks
 Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
-Task PowerStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
-Task LEDStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
+Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
 
+// Comms Tasks
+#ifdef LIBMAPPER
+Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+#endif
+#ifdef OSC
+Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateOSC, &runnerTstick,true);
+#endif
 // Maintenance Tasks
 Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
 Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
-Task WifiScan (MAINTENANCE_RATE, TASK_FOREVER, &reconnectWifi, &runnerTstick, true);
+Task LEDStatusUpdate (LED_STATUS_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
 //==========Functions for task scheduler===========//
+//#define LOADCHECKING
 //================Maintenance Functions============//
+void loadChecker() {
+    Scheduler &s = Scheduler::currentScheduler();
+    Task &t = s.currentTask();
+
+    // Print out overrun and Start delay
+    std::cout 
+    << "Current Time: " << millis() << " Task" << t.getId() 
+    <<" Task start delay = " << t.getStartDelay()
+    << std::endl;
+}
+
 void scanInactiveSensors() {
+    // Check Load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+    
     // Scan inactive sensors for the sensor manager
-    sensormanager.scanInactiveI2C();
+    if (sensormanager.getnumInactiveSensors() != 0) {
+        sensormanager.scanInactiveI2C();
+    } else if (sensormanager.getnumActiveSensors() == 0) { 
+        // No active and inactive sensors means that asll sensors are disabled
+        std::cout << "All sensors are disabled. Skipping inactive sensor scan" << std::endl;
+    } else {
+        // No inactive sensors, but some active or disabled
+        std::cout << "All sensors are either active or disabled. Skipping inactive sensor scan" << std::endl;
+    }
 }
 
 void scanActiveSensors() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
     // Scan inactive sensors for the sensor manager
-    sensormanager.scanActiveI2C();
+    if (sensormanager.getnumActiveSensors() != 0) {
+        sensormanager.scanActiveI2C();
+    } else if (sensormanager.getnumInactiveSensors() == 0) { 
+        // No active and inactive sensors means that asll sensors are disabled
+        std::cout << "All sensors are disabled. Skipping active sensor scan" << std::endl;
+    } else {
+        // No inactive sensors, but some active or disabled
+        std::cout << "All sensors are either inactive or disabled. Skipping active sensor scan" << std::endl;
+    }
 }
 
 void updatePowerStatus() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
     // go to deep sleep if double press button
     if (gestures.getButtonDTap()){
         std::cout << "\nEntering deep sleep.\n\nGoodbye!\n" << std::endl;
@@ -357,15 +432,13 @@ void updatePowerStatus() {
         esp_deep_sleep_start();
     }
 }
-
-void reconnectWifi() {
-    //reconnect wifi if disconnected
-    if (!puara.get_StaIsConnected()) {
-        puara.start_wifi();
-    }
-}
 //================Sensor Functions=================//
 void updateLED() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+    
     // Set LED - connection status and battery level
     #ifdef ARDUINO_LOLIN_D32_PRO
         if (battery.percentage < 10) {        // low battery - flickering
@@ -403,103 +476,116 @@ void updateLED() {
 }
 
 void updateSensors() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+    
     // Get button and fsr data
     button.readButton();
     fsr.readFsr();
 
-    // // Get the Sensor data
-    sensormanager.getSensorData();
+    if (sensormanager.status) {
+        // // Get the Sensor data
+        sensormanager.getSensorData();
 
-    // // Save IMU data to gestures array
-    if (sensormanager.checkSensorStatus("imu")) {
-        gestures.setAccelerometerValues(imu.ax,
-                                        imu.ay,
-                                        imu.az);
-        gestures.setGyroscopeValues(imu.gx,
-                                    imu.gy,
-                                    imu.gz);
-        gestures.setMagnetometerValues(imu.mx,
-                                       imu.my,
-                                       imu.mz);    
-        gestures.updateInertialGestures();                                   
-    }
-    // //Gesture update
-    gestures.updateTrigButton(button.getButton());
+        // // Save IMU data to gestures array
+        if (sensormanager.checkSensorStatus("imu")) {
+            gestures.setAccelerometerValues(imu.ax,
+                                            imu.ay,
+                                            imu.az);
+            gestures.setGyroscopeValues(imu.gx,
+                                        imu.gy,
+                                        imu.gz);
+            gestures.setMagnetometerValues(imu.mx,
+                                        imu.my,
+                                        imu.mz);    
+            gestures.updateInertialGestures();                                   
+        }
+        // //Gesture update
+        gestures.updateTrigButton(button.getButton());
 
-    // Update Sensor Structure for outputting
-    // Preparing arrays for libmapper signals
-    sensors.fsr = fsr.getCookedValue();
-    // Convert accel from g's to meters/sec^2
-    sensors.accl[0] = gestures.getAccelX() * 9.80665;
-    sensors.accl[1] = gestures.getAccelY() * 9.80665;
-    sensors.accl[2] = gestures.getAccelZ() * 9.80665;
-    // Convert gyro from degrees/sec to radians/sec
-    sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
-    sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
-    sensors.gyro[2] = gestures.getGyroZ() * M_PI / 180;
-    // Convert mag from Gauss to uTesla
-    sensors.magn[0] = gestures.getMagX() / 10000;
-    sensors.magn[1] = gestures.getMagY() / 10000;
-    sensors.magn[2] = gestures.getMagZ() / 10000;
-    // Orientation quaternion
-    sensors.quat[0] = gestures.getOrientationQuaternion().w;
-    sensors.quat[1] = gestures.getOrientationQuaternion().x;
-    sensors.quat[2] = gestures.getOrientationQuaternion().y;
-    sensors.quat[3] = gestures.getOrientationQuaternion().z;
-    // Yaw (heading), pitch (tilt) and roll
-    sensors.ypr[0] = gestures.getYaw();
-    sensors.ypr[1] = gestures.getPitch();
-    sensors.ypr[2] = gestures.getRoll();
-    if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
-        sensors.shake[0] = gestures.getShakeX();
-        sensors.shake[1] = gestures.getShakeY();
-        sensors.shake[2] = gestures.getShakeZ();
-        event.shake = true;
-    } else { event.shake = false; }
-    if (sensors.brush != gestures.brush || sensors.multibrush[0] != gestures.multiBrush[0]) {
-        sensors.brush = gestures.brush;
-        sensors.multibrush[0] = gestures.multiBrush[0];
-        sensors.multibrush[1] = gestures.multiBrush[1];
-        sensors.multibrush[2] = gestures.multiBrush[2];
-        sensors.multibrush[3] = gestures.multiBrush[3];
-        event.brush = true;
-    } else { event.brush = false; }
-    if (sensors.rub != gestures.rub || sensors.multirub[0] != gestures.multiRub[0]) {
-        sensors.rub = gestures.rub;
-        sensors.multirub[0] = gestures.multiRub[0];
-        sensors.multirub[1] = gestures.multiRub[1];
-        sensors.multirub[2] = gestures.multiRub[2];
-        sensors.multirub[3] = gestures.multiRub[3];
-        event.rub = true;
-    } else { event.rub = false; }
-    if (sensors.jab[0] != gestures.getJabX() || sensors.jab[1] != gestures.getJabY() || sensors.jab[2] != gestures.getJabZ()) {
-        sensors.jab[0] = gestures.getJabX();
-        sensors.jab[1] = gestures.getJabY();
-        sensors.jab[2] = gestures.getJabZ();
-        event.jab = true;
-    } else { event.jab = false; }
-    if (sensors.count != gestures.getButtonCount()) {sensors.count = gestures.getButtonCount(); event.count = true; } else { event.count = false; }
-    if (sensors.tap != gestures.getButtonTap()) {sensors.tap = gestures.getButtonTap(); event.tap = true; } else { event.tap = false; }
-    if (sensors.dtap != gestures.getButtonDTap()) {sensors.dtap = gestures.getButtonDTap(); event.dtap = true; } else { event.dtap = false; }
-    if (sensors.ttap != gestures.getButtonTTap()) {sensors.ttap = gestures.getButtonTTap(); event.ttap = true; } else { event.ttap = false; }
+        // Update Sensor Structure for outputting
+        // Preparing arrays for libmapper signals
+        sensors.fsr = fsr.getCookedValue();
+        // Convert accel from g's to meters/sec^2
+        sensors.accl[0] = gestures.getAccelX() * 9.80665;
+        sensors.accl[1] = gestures.getAccelY() * 9.80665;
+        sensors.accl[2] = gestures.getAccelZ() * 9.80665;
+        // Convert gyro from degrees/sec to radians/sec
+        sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
+        sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
+        sensors.gyro[2] = gestures.getGyroZ() * M_PI / 180;
+        // Convert mag from Gauss to uTesla
+        sensors.magn[0] = gestures.getMagX() / 10000;
+        sensors.magn[1] = gestures.getMagY() / 10000;
+        sensors.magn[2] = gestures.getMagZ() / 10000;
+        // Orientation quaternion
+        sensors.quat[0] = gestures.getOrientationQuaternion().w;
+        sensors.quat[1] = gestures.getOrientationQuaternion().x;
+        sensors.quat[2] = gestures.getOrientationQuaternion().y;
+        sensors.quat[3] = gestures.getOrientationQuaternion().z;
+        // Yaw (heading), pitch (tilt) and roll
+        sensors.ypr[0] = gestures.getYaw();
+        sensors.ypr[1] = gestures.getPitch();
+        sensors.ypr[2] = gestures.getRoll();
+        if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
+            sensors.shake[0] = gestures.getShakeX();
+            sensors.shake[1] = gestures.getShakeY();
+            sensors.shake[2] = gestures.getShakeZ();
+            event.shake = true;
+        } else { event.shake = false; }
+        if (sensors.brush != gestures.brush || sensors.multibrush[0] != gestures.multiBrush[0]) {
+            sensors.brush = gestures.brush;
+            sensors.multibrush[0] = gestures.multiBrush[0];
+            sensors.multibrush[1] = gestures.multiBrush[1];
+            sensors.multibrush[2] = gestures.multiBrush[2];
+            sensors.multibrush[3] = gestures.multiBrush[3];
+            event.brush = true;
+        } else { event.brush = false; }
+        if (sensors.rub != gestures.rub || sensors.multirub[0] != gestures.multiRub[0]) {
+            sensors.rub = gestures.rub;
+            sensors.multirub[0] = gestures.multiRub[0];
+            sensors.multirub[1] = gestures.multiRub[1];
+            sensors.multirub[2] = gestures.multiRub[2];
+            sensors.multirub[3] = gestures.multiRub[3];
+            event.rub = true;
+        } else { event.rub = false; }
+        if (sensors.jab[0] != gestures.getJabX() || sensors.jab[1] != gestures.getJabY() || sensors.jab[2] != gestures.getJabZ()) {
+            sensors.jab[0] = gestures.getJabX();
+            sensors.jab[1] = gestures.getJabY();
+            sensors.jab[2] = gestures.getJabZ();
+            event.jab = true;
+        } else { event.jab = false; }
+        if (sensors.count != gestures.getButtonCount()) {sensors.count = gestures.getButtonCount(); event.count = true; } else { event.count = false; }
+        if (sensors.tap != gestures.getButtonTap()) {sensors.tap = gestures.getButtonTap(); event.tap = true; } else { event.tap = false; }
+        if (sensors.dtap != gestures.getButtonDTap()) {sensors.dtap = gestures.getButtonDTap(); event.dtap = true; } else { event.dtap = false; }
+        if (sensors.ttap != gestures.getButtonTTap()) {sensors.ttap = gestures.getButtonTTap(); event.ttap = true; } else { event.ttap = false; }
 
-    // Get battery reading from fuel gauge if enabled
-    if (sensormanager.checkSensorStatus("battery")) {
-        // Update battery information (including charge rate)
-        if (sensors.battery != fuelgauge.percentage) {sensors.battery = fuelgauge.percentage; event.battery = true; } else { event.battery = false; };
-        if (sensors.chargerate != fuelgauge.chargerate) {sensors.battery = fuelgauge.chargerate; event.battery = true; } else { event.battery = false; };
+        // Get battery reading from fuel gauge if enabled
+        if (sensormanager.checkSensorStatus("battery")) {
+            // Update battery information (including charge rate)
+            if (sensors.battery != fuelgauge.percentage) {sensors.battery = fuelgauge.percentage; event.battery = true; } else { event.battery = false; };
+            if (sensors.chargerate != fuelgauge.chargerate) {sensors.battery = fuelgauge.chargerate; event.battery = true; } else { event.battery = false; };
+        } else {
+            if (sensors.battery != battery.percentage) {sensors.battery = battery.percentage; event.battery = true; } else { event.battery = false; };
+        }
     } else {
-        if (sensors.battery != battery.percentage) {sensors.battery = battery.percentage; event.battery = true; } else { event.battery = false; };
+        std::cout << "Sensor manager was not initialised.\nSkipping reading sensor data. Check sensor configs were correct.\n" << std::endl;
     }
 
 }
 //=================COMMS Functions=================//
 #ifdef LIBMAPPER
-void pollLibmapper() {
-  mpr_dev_poll(lm_dev, 0);
-}
-
 void updateLibmapper () {    
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+
+    // Poll libmapper
+    mpr_dev_poll(lm_dev, 0);
+    
     // Update libmapper outputs
     // updating libmapper signals
     mpr_sig_set_value(lm.fsr, 0, 1, MPR_FLT, &sensors.fsr);
@@ -532,7 +618,12 @@ void updateLibmapper () {
 #endif
 
 #ifdef OSC
-void updateContinuousOSC() {
+void updateOSC() {
+    // Check load
+    #ifdef LOADCHECKING
+    loadChecker();
+    #endif
+    
     // Sending continuous OSC messages
     if (puara.IP1_ready()) {
 
@@ -663,9 +754,7 @@ void updateContinuousOSC() {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "ypr");
             lo_send(osc2, oscNamespace.c_str(), "fff", sensors.ypr[0], sensors.ypr[1], sensors.ypr[2]);
     }
-}
 
-void updateDiscreteOSC() {
     // Sending discrete OSC messages
     if (puara.IP1_ready()) {
         if (event.brush) {
@@ -751,8 +840,10 @@ void updateDiscreteOSC() {
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
         }
     }
-#endif
 }
+#endif
+
+
 
 ///////////
 // setup //
@@ -800,8 +891,16 @@ void setup() {
     sensorClass.push_back(touch2);
     sensorClass.push_back(fuelgauge);
 
+    //
+    Wire.begin(SDA_PIN, SCL_PIN);
+    Wire.setClock(I2CUPDATE_FREQ); // Fast mode plus
+
     // Initialising I2C Sensors
-    sensormanager.initSensorManager(sensorClass);
+    if (sensormanager.initSensorManager(sensorClass)) {
+        std::cout << "Initialised Sensor Manager" << std::endl;
+    } else {
+        std::cout << "Sensor Manager failed to initialise" << std::endl;
+    }
 
     std::cout << "    Initializing Liblo server/client at " << puara.getLocalPORTStr() << " ... ";
     osc1 = lo_address_new(puara.getIP1().c_str(), puara.getPORT1Str().c_str());

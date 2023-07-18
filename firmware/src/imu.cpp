@@ -1,8 +1,6 @@
 #include "imu.h"
 
 bool IMU::initialise(uint8_t I2C_ADDR) {
-    Wire.begin();
-
     // [enabled] turns the gyro on or off.
     imuSensor.settings.gyro.enabled = true;
     // [scale] sets the full-scale range of the gyroscope.
