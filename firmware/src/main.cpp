@@ -27,6 +27,7 @@ unsigned int firmware_version = 220929;
  Define libmapper
 */
 #define LIBMAPPER
+#define OSC
 
 #include "Arduino.h"
 
@@ -42,7 +43,7 @@ unsigned int firmware_version = 220929;
 #include <algorithm>
 
 // Include task scheduler library
-// #include <TaskScheduler.h>
+#include <TaskScheduler.h>
 
 // initializing libmapper, puara, puara-gestures, and liblo client
 mpr_dev lm_dev = 0;
@@ -288,15 +289,14 @@ struct Event {
     bool battery;
 } event;
 
-void initIMU();
-
 //*********************TASK SCHEDULING*******************************************//
 // Timing variables
-const uint32_t LIBMAPPER_POLL_RATE = 1 ; // 100Hz
-const uint32_t LIBMAPPER_UPDATE_RATE = 1 ; // 100Hz
-const uint32_t OSC_UPDATE_RATE = 1 ; // 100Hz
+const uint32_t LIBMAPPER_POLL_RATE = 1000 ; // 100Hz
+const uint32_t LIBMAPPER_UPDATE_RATE = 1000 ; // 100Hz
+const uint32_t OSC_UPDATE_RATE = 1000 ; // 1000Hz
 const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
-const uint32_t SENSOR_READ_RATE = 1; // 1kHz
+const uint32_t SENSOR_READ_RATE = 1000; // 1kHz
+const uint32_t MAINTENANCE_RATE = 30000000; // 30s
 
 
 // Communication Functions
@@ -304,31 +304,51 @@ const uint32_t SENSOR_READ_RATE = 1; // 1kHz
 void pollLibmapper();
 void updateLibmapper();
 #endif
-void reconnectWifi();
+#ifdef OSC
 void updateContinuousOSC();
 void updateDiscreteOSC();
-
+#endif
 // Sensor functions
 void updateSensors();
 void updatePowerStatus();
 void updateLED();
 
-// Create Scheduler
-// Scheduler runnerTstick;
-// // Comms Tasks
-// #ifdef LIBMAPPER
-// Task libmapperPoll (LIBMAPPER_POLL_RATE, TASK_FOREVER, &pollLibmapper, &runnerTstick,true);
-// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
-// #endif
-// Task OSCContinuousUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateContinuousOSC, &runnerTstick,true);
-// Task OSCDiscreteUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateDiscreteOSC, &runnerTstick,true);
+// Maintenance Functions
+void scanInactiveSensors();
+void scanActiveSensors();
+void reconnectWifi();
 
-// // Sensor Tasks
-// // Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
-// Task PowerStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
-// Task LEDStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
+// Create Scheduler
+Scheduler runnerTstick;
+// Comms Tasks
+#ifdef LIBMAPPER
+Task libmapperPoll (LIBMAPPER_POLL_RATE, TASK_FOREVER, &pollLibmapper, &runnerTstick,true);
+Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+#endif
+Task OSCContinuousUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateContinuousOSC, &runnerTstick,true);
+Task OSCDiscreteUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateDiscreteOSC, &runnerTstick,true);
+
+// Sensor Tasks
+Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+Task PowerStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
+Task LEDStatusUpdate (SENSOR_READ_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
+
+// Maintenance Tasks
+Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
+Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
+Task WifiScan (MAINTENANCE_RATE, TASK_FOREVER, &reconnectWifi, &runnerTstick, true);
 //==========Functions for task scheduler===========//
-//================Sensor Functions=================//
+//================Maintenance Functions============//
+void scanInactiveSensors() {
+    // Scan inactive sensors for the sensor manager
+    sensormanager.scanInactiveI2C();
+}
+
+void scanActiveSensors() {
+    // Scan inactive sensors for the sensor manager
+    sensormanager.scanActiveI2C();
+}
+
 void updatePowerStatus() {
     // go to deep sleep if double press button
     if (gestures.getButtonDTap()){
@@ -338,6 +358,13 @@ void updatePowerStatus() {
     }
 }
 
+void reconnectWifi() {
+    //reconnect wifi if disconnected
+    if (!puara.get_StaIsConnected()) {
+        puara.start_wifi();
+    }
+}
+//================Sensor Functions=================//
 void updateLED() {
     // Set LED - connection status and battery level
     #ifdef ARDUINO_LOLIN_D32_PRO
@@ -377,8 +404,8 @@ void updateLED() {
 
 void updateSensors() {
     // Get button and fsr data
-    button.readData();
-    fsr.readData();
+    button.readButton();
+    fsr.readFsr();
 
     // // Get the Sensor data
     sensormanager.getSensorData();
@@ -393,77 +420,77 @@ void updateSensors() {
                                     imu.gz);
         gestures.setMagnetometerValues(imu.mx,
                                        imu.my,
-                                       imu.mz);                                       
+                                       imu.mz);    
+        gestures.updateInertialGestures();                                   
     }
     // //Gesture update
     gestures.updateTrigButton(button.getButton());
-    // gestures.updateInertialGestures();
 
-    // // Update Sensor Structure for outputting
-    //    // Preparing arrays for libmapper signals
-    // sensors.fsr = fsr.getCookedValue();
-    // // Convert accel from g's to meters/sec^2
-    // sensors.accl[0] = gestures.getAccelX() * 9.80665;
-    // sensors.accl[1] = gestures.getAccelY() * 9.80665;
-    // sensors.accl[2] = gestures.getAccelZ() * 9.80665;
-    // // Convert gyro from degrees/sec to radians/sec
-    // sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
-    // sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
-    // sensors.gyro[2] = gestures.getGyroZ() * M_PI / 180;
-    // // Convert mag from Gauss to uTesla
-    // sensors.magn[0] = gestures.getMagX() / 10000;
-    // sensors.magn[1] = gestures.getMagY() / 10000;
-    // sensors.magn[2] = gestures.getMagZ() / 10000;
-    // // Orientation quaternion
-    // sensors.quat[0] = gestures.getOrientationQuaternion().w;
-    // sensors.quat[1] = gestures.getOrientationQuaternion().x;
-    // sensors.quat[2] = gestures.getOrientationQuaternion().y;
-    // sensors.quat[3] = gestures.getOrientationQuaternion().z;
-    // // Yaw (heading), pitch (tilt) and roll
-    // sensors.ypr[0] = gestures.getYaw();
-    // sensors.ypr[1] = gestures.getPitch();
-    // sensors.ypr[2] = gestures.getRoll();
-    // if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
-    //     sensors.shake[0] = gestures.getShakeX();
-    //     sensors.shake[1] = gestures.getShakeY();
-    //     sensors.shake[2] = gestures.getShakeZ();
-    //     event.shake = true;
-    // } else { event.shake = false; }
-    // if (sensors.brush != gestures.brush || sensors.multibrush[0] != gestures.multiBrush[0]) {
-    //     sensors.brush = gestures.brush;
-    //     sensors.multibrush[0] = gestures.multiBrush[0];
-    //     sensors.multibrush[1] = gestures.multiBrush[1];
-    //     sensors.multibrush[2] = gestures.multiBrush[2];
-    //     sensors.multibrush[3] = gestures.multiBrush[3];
-    //     event.brush = true;
-    // } else { event.brush = false; }
-    // if (sensors.rub != gestures.rub || sensors.multirub[0] != gestures.multiRub[0]) {
-    //     sensors.rub = gestures.rub;
-    //     sensors.multirub[0] = gestures.multiRub[0];
-    //     sensors.multirub[1] = gestures.multiRub[1];
-    //     sensors.multirub[2] = gestures.multiRub[2];
-    //     sensors.multirub[3] = gestures.multiRub[3];
-    //     event.rub = true;
-    // } else { event.rub = false; }
-    // if (sensors.jab[0] != gestures.getJabX() || sensors.jab[1] != gestures.getJabY() || sensors.jab[2] != gestures.getJabZ()) {
-    //     sensors.jab[0] = gestures.getJabX();
-    //     sensors.jab[1] = gestures.getJabY();
-    //     sensors.jab[2] = gestures.getJabZ();
-    //     event.jab = true;
-    // } else { event.jab = false; }
-    // if (sensors.count != gestures.getButtonCount()) {sensors.count = gestures.getButtonCount(); event.count = true; } else { event.count = false; }
-    // if (sensors.tap != gestures.getButtonTap()) {sensors.tap = gestures.getButtonTap(); event.tap = true; } else { event.tap = false; }
-    // if (sensors.dtap != gestures.getButtonDTap()) {sensors.dtap = gestures.getButtonDTap(); event.dtap = true; } else { event.dtap = false; }
-    // if (sensors.ttap != gestures.getButtonTTap()) {sensors.ttap = gestures.getButtonTTap(); event.ttap = true; } else { event.ttap = false; }
+    // Update Sensor Structure for outputting
+    // Preparing arrays for libmapper signals
+    sensors.fsr = fsr.getCookedValue();
+    // Convert accel from g's to meters/sec^2
+    sensors.accl[0] = gestures.getAccelX() * 9.80665;
+    sensors.accl[1] = gestures.getAccelY() * 9.80665;
+    sensors.accl[2] = gestures.getAccelZ() * 9.80665;
+    // Convert gyro from degrees/sec to radians/sec
+    sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
+    sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
+    sensors.gyro[2] = gestures.getGyroZ() * M_PI / 180;
+    // Convert mag from Gauss to uTesla
+    sensors.magn[0] = gestures.getMagX() / 10000;
+    sensors.magn[1] = gestures.getMagY() / 10000;
+    sensors.magn[2] = gestures.getMagZ() / 10000;
+    // Orientation quaternion
+    sensors.quat[0] = gestures.getOrientationQuaternion().w;
+    sensors.quat[1] = gestures.getOrientationQuaternion().x;
+    sensors.quat[2] = gestures.getOrientationQuaternion().y;
+    sensors.quat[3] = gestures.getOrientationQuaternion().z;
+    // Yaw (heading), pitch (tilt) and roll
+    sensors.ypr[0] = gestures.getYaw();
+    sensors.ypr[1] = gestures.getPitch();
+    sensors.ypr[2] = gestures.getRoll();
+    if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
+        sensors.shake[0] = gestures.getShakeX();
+        sensors.shake[1] = gestures.getShakeY();
+        sensors.shake[2] = gestures.getShakeZ();
+        event.shake = true;
+    } else { event.shake = false; }
+    if (sensors.brush != gestures.brush || sensors.multibrush[0] != gestures.multiBrush[0]) {
+        sensors.brush = gestures.brush;
+        sensors.multibrush[0] = gestures.multiBrush[0];
+        sensors.multibrush[1] = gestures.multiBrush[1];
+        sensors.multibrush[2] = gestures.multiBrush[2];
+        sensors.multibrush[3] = gestures.multiBrush[3];
+        event.brush = true;
+    } else { event.brush = false; }
+    if (sensors.rub != gestures.rub || sensors.multirub[0] != gestures.multiRub[0]) {
+        sensors.rub = gestures.rub;
+        sensors.multirub[0] = gestures.multiRub[0];
+        sensors.multirub[1] = gestures.multiRub[1];
+        sensors.multirub[2] = gestures.multiRub[2];
+        sensors.multirub[3] = gestures.multiRub[3];
+        event.rub = true;
+    } else { event.rub = false; }
+    if (sensors.jab[0] != gestures.getJabX() || sensors.jab[1] != gestures.getJabY() || sensors.jab[2] != gestures.getJabZ()) {
+        sensors.jab[0] = gestures.getJabX();
+        sensors.jab[1] = gestures.getJabY();
+        sensors.jab[2] = gestures.getJabZ();
+        event.jab = true;
+    } else { event.jab = false; }
+    if (sensors.count != gestures.getButtonCount()) {sensors.count = gestures.getButtonCount(); event.count = true; } else { event.count = false; }
+    if (sensors.tap != gestures.getButtonTap()) {sensors.tap = gestures.getButtonTap(); event.tap = true; } else { event.tap = false; }
+    if (sensors.dtap != gestures.getButtonDTap()) {sensors.dtap = gestures.getButtonDTap(); event.dtap = true; } else { event.dtap = false; }
+    if (sensors.ttap != gestures.getButtonTTap()) {sensors.ttap = gestures.getButtonTTap(); event.ttap = true; } else { event.ttap = false; }
 
-    // // Get battery reading from fuel gauge if enabled
-    // if (sensormanager.checkSensorStatus("battery")) {
-    //     // Update battery information (including charge rate)
-    //     if (sensors.battery != fuelgauge.percentage) {sensors.battery = fuelgauge.percentage; event.battery = true; } else { event.battery = false; };
-    //     if (sensors.chargerate != fuelgauge.chargerate) {sensors.battery = fuelgauge.chargerate; event.battery = true; } else { event.battery = false; };
-    // } else {
-    //     if (sensors.battery != battery.percentage) {sensors.battery = battery.percentage; event.battery = true; } else { event.battery = false; };
-    // }
+    // Get battery reading from fuel gauge if enabled
+    if (sensormanager.checkSensorStatus("battery")) {
+        // Update battery information (including charge rate)
+        if (sensors.battery != fuelgauge.percentage) {sensors.battery = fuelgauge.percentage; event.battery = true; } else { event.battery = false; };
+        if (sensors.chargerate != fuelgauge.chargerate) {sensors.battery = fuelgauge.chargerate; event.battery = true; } else { event.battery = false; };
+    } else {
+        if (sensors.battery != battery.percentage) {sensors.battery = battery.percentage; event.battery = true; } else { event.battery = false; };
+    }
 
 }
 //=================COMMS Functions=================//
@@ -504,6 +531,7 @@ void updateLibmapper () {
 }
 #endif
 
+#ifdef OSC
 void updateContinuousOSC() {
     // Sending continuous OSC messages
     if (puara.IP1_ready()) {
@@ -723,6 +751,7 @@ void updateDiscreteOSC() {
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
         }
     }
+#endif
 }
 
 ///////////
@@ -749,15 +778,17 @@ void setup() {
     #endif
 
     std::cout << "    Initializing button configuration... ";
-    if (button.init(pin.button)) {
-        std::cout << "done" << std::endl;
+    if (button.initButton(pin.button)) {
+        std::cout << "done" << "\n" 
+                  << "Button Pin: " << button.getPin() << "\n" << std::endl;
     } else {
         std::cout << "initialization failed!" << std::endl;
     }
 
     std::cout << "    Initializing FSR... ";
-    if (fsr.init(pin.fsr, std::round(puara.getVarNumber("fsr_offset")))) {
-        std::cout << "done (offset value: " << fsr.getOffset() << ")" << std::endl;
+    if (fsr.initFsr(pin.fsr, std::round(puara.getVarNumber("fsr_offset")))) {
+        std::cout << "done (offset value: " << fsr.getOffset() << ")\n" 
+                  << "FSR Pin: " << fsr.getPin() << "\n" << std::endl;
     } else {
         std::cout << "initialization failed!" << std::endl;
     }
@@ -824,7 +855,6 @@ void setup() {
 
 void loop() {
     // Read Sensors
-    // runnerTstick.execute();
-    updateSensors();
-
+    runnerTstick.execute();
+    // updateSensors();
 }

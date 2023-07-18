@@ -9,9 +9,8 @@
 // #include "esp_log.h"
 
 #include <Arduino.h>
-#include <sensor.h>
 
-class Button : public sensor {
+class Button {
     private:
         int pin = 15;
         int buttonState = 0;
@@ -22,14 +21,15 @@ class Button : public sensor {
         long timer;
         unsigned long pressTime;
     public:
-        bool initialise(int &buttonPin);
-        bool getSensorData();
+        bool initButton(int &buttonPin);
+        void readButton();
         bool getButton();
         unsigned int getPressTime();
         unsigned int getState();
         bool getHold();
         unsigned int getHoldInterval();
         unsigned int setHoldInterval(int value);
+        int getPin();
 };
 
 #endif

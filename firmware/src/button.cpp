@@ -2,7 +2,8 @@
 // Button (or button) function
 
 #include "button.h"
-bool Button::getSensorData() {
+
+void Button::readButton() {
     buttonState = !digitalRead(pin);
     if (buttonState) {
         if (!Button::button) {
@@ -24,10 +25,9 @@ bool Button::getSensorData() {
             Button::timer = millis();
         }
     }
-    return 1;
 }
 
-bool Button::initialise(int &buttonPin) {
+bool Button::initButton(int &buttonPin) {
     Button::pin = buttonPin;
     pinMode(Button::pin, INPUT_PULLUP);
     return 1;
@@ -58,3 +58,6 @@ unsigned int Button::setHoldInterval(int value) {
     return 1;
 }
 
+int Button::getPin() {
+    return Button::pin;
+}

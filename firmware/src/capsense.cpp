@@ -85,6 +85,9 @@ bool Capsense::initCapsense(uint8_t I2C_ADDR) {
         printf("  INCORRECT DEVICE_ID found: ");
     }
     printf("%u %u\n",answer1, answer2);
+
+    // Return 1 if completed
+    return 1;
 }
 
 bool Capsense::initialise(uint8_t I2C_ADDR) {

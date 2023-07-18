@@ -33,6 +33,7 @@ class sensorManager {
             bool active;
             bool enabled;
             int classIdx;
+            int numFailure;
             sensor sensorObject;
         };
         // Initialisation Functions
@@ -53,7 +54,6 @@ class sensorManager {
         static const uint8_t spiffs_max_files = 10;
         static const bool spiffs_format_if_mount_failed = false;
 
-
         // I2C Scanning functions
         void scanInactiveI2C();
         void scanActiveI2C();
@@ -67,6 +67,9 @@ class sensorManager {
         // Return sensor info
         bool checkSensorStatus(std::string sensorName);
         sensor getSensorObject(std::string sensorName);
+
+        // Max failure
+        int maxFailures = 5;
     private:
         int scanInterval = 1;
         static std::vector<sensorInfo> sensors;

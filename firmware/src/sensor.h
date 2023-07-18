@@ -8,7 +8,7 @@
 
 class sensor {
     public:
-        bool init(uint8_t sensoraddress, uint8_t extraParam = 0);
+        bool init(int sensoraddress, int extraParam = 0);
         bool readData();
         virtual bool initialise(uint8_t sensoraddress, uint8_t extraParam = 0);
         virtual bool getSensorData();

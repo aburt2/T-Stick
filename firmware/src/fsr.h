@@ -4,9 +4,8 @@
 #define FSR_H
 
 #include <Arduino.h>
-#include <sensor.h>
 
-class Fsr : public sensor {
+class Fsr {
     private:
         int pin;
         float value = 0;
@@ -14,13 +13,14 @@ class Fsr : public sensor {
         float cookedValue = 0;
         int offset = 0;
     public:
-        bool initialise(int &fsr_pin, int offsetValue);
-        bool getSensorData();
+        int initFsr(int &fsr_pin, int offsetValue);
+        int readFsr();
         float getValue();
         float getNormValue();
         float getCookedValue();
         int getOffset();
         int setOffset(int offsetValue);
+        int getPin();
 };
 
 #endif

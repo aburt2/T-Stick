@@ -1,13 +1,14 @@
 // FSR function
 
 #include "fsr.h"
-bool Fsr::initialise(int &fsr_pin, int offsetValue){
+
+int Fsr::initFsr(int &fsr_pin, int offsetValue){
     Fsr::pin = fsr_pin;
     Fsr::offset = offsetValue;
     return 1;
 }
 
-bool Fsr::getSensorData() {
+int Fsr::readFsr() {
     Fsr::value = analogRead(Fsr::pin);
     Fsr::normValue = constrain((Fsr::value - Fsr::offset) / (4095 - Fsr::offset), 0, 1);
     Fsr::cookedValue = Fsr::value - Fsr::offset;
@@ -33,4 +34,8 @@ int Fsr::getOffset(){
 int Fsr::setOffset(int offsetValue){
     Fsr::offset = offsetValue;
     return 1;
+}
+
+int Fsr::getPin() {
+    return Fsr::pin;
 }
