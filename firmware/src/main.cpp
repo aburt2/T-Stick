@@ -366,7 +366,7 @@ Scheduler runnerTstick;
 // Fast Sensor Tasks
 Task TouchUpdate (TOUCH_READ_RATE, TASK_FOREVER, &getTouchData, &runnerTstick, true);
 Task IMUUpdate (IMU_READ_RATE, TASK_FOREVER, &getIMUData, &runnerTstick, true);
-Task FSRUpdate (GPIO_READ_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+Task GPIOUpdate (GPIO_READ_RATE, TASK_FOREVER, &getGPIODATA, &runnerTstick, true);
 Task GestureUpdate (GESTURE_UPDATE_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
 
 // Slow Sensor Tasks
@@ -535,8 +535,10 @@ void getFuelGaugeData() {
     if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
         sensormanager.getSensorData("battery");
     } else {
-        // disable task if sensor is inactive
-        BatteryUpdate.disable();
+        // // disable task if sensor is inactive
+        // BatteryUpdate.disable();
+        readBattery();
+        batteryFilter();
     }
 }
 
@@ -1054,3 +1056,4 @@ void loop() {
     runnerTstick.execute();
     // updateSensors();
 }
+
