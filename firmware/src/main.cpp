@@ -59,6 +59,7 @@ const int SCL_PIN = 22;
 #include <deque>
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 
 // Include task scheduler library
 #include <TaskScheduler.h>
@@ -308,137 +309,157 @@ struct Event {
 } event;
 
 //*********************TASK SCHEDULING*******************************************//
-// Timing variables
-const uint32_t LIBMAPPER_UPDATE_RATE = 1000; // 1000Hz
-const uint32_t OSC_UPDATE_RATE = 1000; // 1000Hz
-const uint32_t TOUCH_READ_RATE = 1000; // 1000Hz
-const uint32_t IMU_READ_RATE = 1000; // 1000Hz
-const uint32_t GPIO_READ_RATE = 1000; // 1000Hz
-const uint32_t GESTURE_UPDATE_RATE = 1000; // 1000Hz
-const uint32_t BATTERY_READ_RATE = TASK_SECOND; // 1000Hz
-const uint32_t POWER_STATUS_RATE = 10000; // 100Hz
-const uint32_t LED_STATUS_RATE = TASK_SECOND; // 1s
-const uint32_t MAINTENANCE_RATE = 30000000; // 30s
+// Timing variables in t = 1/f
+const uint32_t LIBMAPPER_UPDATE_RATE =10 * TASK_MILLISECOND; // f = 100Hz
+const uint32_t OSC_UPDATE_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
+const uint32_t SENSOR_READ_RATE = TASK_MILLISECOND; // f = 1000Hz
+const uint32_t BATTERY_READ_RATE = TASK_SECOND; // t = 1s
+const uint32_t POWER_STATUS_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
+const uint32_t MAINTENANCE_RATE = 30 * TASK_SECOND; // t = 30s
 const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
 
 // Communication Functions
 #ifdef LIBMAPPER
 void updateLibmapper();
+void mapperFSR();
+void mapperIMU();
+void mapperInertialGestures();
+void MapperTouchGestures();
+void mapperButtonGestures();
+void mapperBattery();
 #endif
 #ifdef OSC
 void updateOSC();
+void oscFSR();
+void oscIMU();
+void oscInertialGestures();
+void oscTouchGestures();
+void oscButtonGestures();
+void oscBattery();
 #endif
 // Sensor functions
-void updateSensors();
-void getFuelGaugeData();
-void getIMUData();
+// Fast sensor functions
+void readSensors();
 void getTouchData();
-void getGPIOData();
+void getIMUData();
+void updateSensors();
+
+// Slow sensor functions
+void getFuelGaugeData();
 void updatePowerStatus();
 void updateLED();
 
 // Maintenance Functions
 void scanInactiveSensors();
 void scanActiveSensors();
-void loadChecker();
-void updateTask();
 
 // Create Scheduler
 Scheduler runnerTstick;
 
+// Timing methods for testing
+// Callback methods prototypes
+bool tOn(); void tOff();
+std::map<unsigned int, std::vector<int>> taskStarts;
+std::map<unsigned int, std::vector<int>> taskEnds;
+unsigned long c1, c2;
+std::vector<int> tmp;
+
 //==========Tasks to check overhead===========//
-// //Sensor Tasks
-// Task SensorUpdate (SENSOR_READ_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
-// Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
-// Task LEDStatusUpdate (LED_STATUS_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
-
-// // Comms Tasks
-// #ifdef LIBMAPPER
-// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick,true);
-// #endif
-// Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick,true);
-
-// // Maintenance Tasks
-// Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
-// Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &loadChecker, &runnerTstick, true);
-
-//==========T-Stick Tasks===========//
 // Fast Sensor Tasks
-Task TouchUpdate (TOUCH_READ_RATE, TASK_FOREVER, &getTouchData, &runnerTstick, true);
-Task IMUUpdate (IMU_READ_RATE, TASK_FOREVER, &getIMUData, &runnerTstick, true);
-Task GPIOUpdate (GPIO_READ_RATE, TASK_FOREVER, &getGPIODATA, &runnerTstick, true);
-Task GestureUpdate (GESTURE_UPDATE_RATE, TASK_FOREVER, &updateSensors, &runnerTstick, true);
+Task UpdateSensors (SENSOR_READ_RATE, 1000, &readSensors, &runnerTstick, false, &tOn, &tOff);
 
 // Slow Sensor Tasks
-Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
-Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
+Task BatteryUpdate (BATTERY_READ_RATE, 1000, &getFuelGaugeData, &runnerTstick, false, &tOn, &tOff);
+Task PowerStatusUpdate (POWER_STATUS_RATE, 1000, &updatePowerStatus, &runnerTstick, false, &tOn, &tOff);
 
 // Comms Tasks
 #ifdef LIBMAPPER
-Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, 1000, &updateLibmapper, &runnerTstick,false, &tOn, &tOff);
 #endif
 #ifdef OSC
-Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateOSC, &runnerTstick,true);
+Task OSCUpdate (OSC_UPDATE_RATE, 1000, &updateOSC, &runnerTstick,false, &tOn, &tOff);
 #endif
 // Maintenance Tasks
-Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
-Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
-Task LEDStatusUpdate (LED_STATUS_RATE, TASK_FOREVER, &updateLED, &runnerTstick, true);
-Task RenableTask (MAINTENANCE_RATE, TASK_FOREVER, &updateTask, &runnerTstick, true);
+Task SensorsScan (MAINTENANCE_RATE, 10, &scanInactiveSensors, &runnerTstick, false, &tOn, &tOff);
+
+//==========T-Stick Tasks===========//
+// // Fast Sensor Tasks
+//Task UpdateSensors (SENSOR_READ_RATE, 1000, &getTouchData, &runnerTstick, true);
+
+// // Slow Sensor Tasks
+// Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
+// Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
+
+// // Comms Tasks
+// #ifdef LIBMAPPER
+// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+// #endif
+// #ifdef OSC
+// Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateOSC, &runnerTstick,true);
+// #endif
+// // Maintenance Tasks
+// Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
+// Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
 //==========Functions for task scheduler===========//
-// Enable if you want to print task stats to the serial monitor
-//#define LOADCHECKING
-//================Maintenance Functions============//
-void loadChecker() {
+void saveStart() {
+    // Get current task
     Scheduler &s = Scheduler::currentScheduler();
     Task &t = s.currentTask();
 
-    // Print out overrun and Start delay
-    std::cout 
-    << "Current Time: " << millis() << " Task" << t.getId() 
-    <<" Task start delay = " << t.getStartDelay()
+    c1 = millis();
+    taskStarts[t.getId()].push_back(c1);
+}
+
+void saveEnd() {
+    // Get current task
+    Scheduler &s = Scheduler::currentScheduler();
+    Task &t = s.currentTask();
+
+    c2 = millis();
+    taskEnds[t.getId()].push_back(c2);
+}
+bool tOn() {
+    // Get current task
+    Scheduler &s = Scheduler::currentScheduler();
+    Task &t = s.currentTask();
+
+    // Get timing
+    taskStarts[t.getId()] = tmp;
+    taskEnds[t.getId()] = tmp;
+    return true;
+}
+
+void tOff() {
+    // Get current task
+    Scheduler &s = Scheduler::currentScheduler();
+    Task &t = s.currentTask();
+
+    // Create arrays
+    std::vector<int> durationArray;
+    std::vector<int> periodArray;
+    std::vector<int> tmpPeriod;
+    tmpPeriod = taskStarts[t.getId()];
+    tmpPeriod[0] = 0;
+
+    // Calculate average duration and frequency
+    std::transform(taskEnds[t.getId()].begin(), taskEnds[t.getId()].end(), taskStarts[t.getId()].begin(), std::back_inserter(durationArray), std::minus<int>());
+    std::transform(taskStarts[t.getId()].begin(), taskStarts[t.getId()].end(), tmpPeriod.begin(), std::back_inserter(periodArray), std::minus<int>());
+    
+    // Get average
+    periodArray.erase(periodArray.begin());
+    float dur = std::accumulate(durationArray.begin(),durationArray.end(), 0.0)/ durationArray.size();
+    float per = std::accumulate(periodArray.begin(), periodArray.end(), 0.0)/ periodArray.size();
+    
+    std::cout
+    << "Task " << t.getId() << "done.\n" 
+    << "Average Period = " << per << "\n"
+    << "Duration = " << dur << "\n"
     << std::endl;
 }
 
-void updateTask () {
-    // Enable tasks for sensors that became active
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
-    // Renable Battery sensor
-    if (!BatteryUpdate.isEnabled()) {
-        if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
-            BatteryUpdate.enable();
-            std::cout << "Fuel Gauge Update task re-enabled" << std::endl;
-        }
-    }
-
-    // Reenable Touch sensors
-    if (!TouchUpdate.isEnabled()) {
-        if (sensormanager.checkSensorStatus("trillcraft1") && (sensormanager.status == 1)) {
-            sensormanager.getSensorData("trillcraft1");
-            TouchUpdate.enable();
-            std::cout << "Touch Sensor Update task re-enabled" << std::endl;
-        }
-    }
-    //Reenable IMU
-    if (!IMUUpdate.isEnabled()) {
-        if (sensormanager.checkSensorStatus("imu") && (sensormanager.status == 1)) {
-            sensormanager.getSensorData("imu");
-            IMUUpdate.enable();
-            std::cout << "IMU Update task re-enabled" << std::endl; 
-        }
-    }
-}
-
+//================Maintenance Functions============//
 void scanInactiveSensors() {
-    // Check Load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-    
+    saveStart();
     // Scan inactive sensors for the sensor manager
     if (sensormanager.getnumInactiveSensors() != 0) {
         sensormanager.scanInactiveI2C();
@@ -449,15 +470,14 @@ void scanInactiveSensors() {
         // No inactive sensors, but some active or disabled
         std::cout << "All sensors are either active or disabled. Skipping inactive sensor scan" << std::endl;
     }
+    
+    // Set active sensor scan and schedule it immediately
+    SensorsScan.setCallback(&scanActiveSensors);
+    SensorsScan.forceNextIteration();
 }
 
 void scanActiveSensors() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
-    // Scan inactive sensors for the sensor manager
+    // Scan active sensors for the sensor manager
     if (sensormanager.getnumActiveSensors() != 0) {
         sensormanager.scanActiveI2C();
     } else if (sensormanager.getnumInactiveSensors() == 0) { 
@@ -467,101 +487,50 @@ void scanActiveSensors() {
         // No inactive sensors, but some active or disabled
         std::cout << "All sensors are either inactive or disabled. Skipping active sensor scan" << std::endl;
     }
+    saveEnd();
+
+    // Set inactive sensor as next call
+    SensorsScan.setCallback(&scanInactiveSensors);
 }
 
 void updatePowerStatus() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
+    saveStart();
     // go to deep sleep if double press button
     if (gestures.getButtonDTap()){
         std::cout << "\nEntering deep sleep.\n\nGoodbye!\n" << std::endl;
         delay(1000);
         esp_deep_sleep_start();
     }
-}
-
-void updateLED() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-    
-    // Set LED - connection status and battery level
-    #ifdef ARDUINO_LOLIN_D32_PRO
-        if (battery.percentage < 10) {        // low battery - flickering
-        led.setInterval(75);
-        led_var.ledValue = led.blink(255, 50);
-        ledcWrite(0, led_var.ledValue);
-        } else {
-            if (puara.get_StaIsConnected()) { // blinks when connected, cycle when disconnected
-                led.setInterval(1000);
-                led_var.ledValue = led.blink(255, 40);
-                ledcWrite(0, led_var.ledValue);
-            } else {
-                led.setInterval(4000);
-                led_var.ledValue = led.cycle(led_var.ledValue, 0, 255);
-                ledcWrite(0, led_var.ledValue);
-            }
-        }
-    #elif defined(ARDUINO_TINYPICO)
-        if (battery.percentage < 10) {                // low battery (red)
-            led.setInterval(20);
-            led_var.color = led.blink(255, 20);
-            tinypico.DotStar_SetPixelColor(led_var.color, 0, 0);
-        } else {
-            if (puara.get_StaIsConnected()) {         // blinks when connected, cycle when disconnected
-                led.setInterval(1000);                // RGB: 0, 128, 255 (Dodger Blue)
-                led_var.color = led.blink(255,20);
-                tinypico.DotStar_SetPixelColor(0, uint8_t(led_var.color/2), led_var.color);
-            } else {
-                led.setInterval(4000);
-                led_var.color = led.cycle(led_var.color, 0, 255);
-                tinypico.DotStar_SetPixelColor(0, uint8_t(led_var.color/2), led_var.color);
-            }
-        }
-    #endif  
+    saveEnd();
 }
 //================Sensor Functions=================//
-void getFuelGaugeData() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
+void readSensors() {
+    // Save start time
+    saveStart();
 
-    // Get the Sensor data
-    if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
-        sensormanager.getSensorData("battery");
-    } else {
-        // // disable task if sensor is inactive
-        // BatteryUpdate.disable();
-        readBattery();
-        batteryFilter();
-    }
+    // Get button and fsr data
+    button.readButton();
+    fsr.readFsr();
+
+    // Read touch data next
+    UpdateSensors.setCallback(&getTouchData);
+    UpdateSensors.forceNextIteration();
 }
 
 void getTouchData() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
     // Get the Sensor data
     if (sensormanager.checkSensorStatus("trillcraft1") && (sensormanager.status == 1)) {
         sensormanager.getSensorData("trillcraft1");
     } else {
-        TouchUpdate.disable();
+        //TouchUpdate.disable();
     }
+
+    // Read IMU Data
+    UpdateSensors.setCallback(&getIMUData);
+    UpdateSensors.forceNextIteration();
 }
 
 void getIMUData() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
     // Get sensor data if the sensor is active
     if (sensormanager.checkSensorStatus("imu") && (sensormanager.status == 1)) {
         // Get the Sensor data
@@ -579,27 +548,15 @@ void getIMUData() {
                                     imu.mz);    
         gestures.updateInertialGestures();                                   
     } else {
-        IMUUpdate.disable();
+        //IMUUpdate.disable();
     }
-}
-
-void getGPIODATA() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
-    // Get button and fsr data
-    button.readButton();
-    fsr.readFsr();
-}
-
-void updateSensors() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
     
+    // Update Sensor array
+    UpdateSensors.setCallback(&updateSensors);
+    UpdateSensors.forceNextIteration();
+}
+
+void updateSensors() { 
     if (sensormanager.status == 1) {
         // //Gesture update
         gestures.updateTrigButton(button.getButton());
@@ -672,16 +629,71 @@ void updateSensors() {
     } else {
         std::cout << "Sensor manager was not initialised.\nSkipping reading sensor data. Check sensor configs were correct.\n" << std::endl;
     }
+    // Stop reading sensor data
+    saveEnd();
 
+    // End sensor read task and reset to readSensors
+    UpdateSensors.setCallback(&readSensors);
+}
+void getFuelGaugeData() {
+    saveStart();
+    // Get the Sensor data
+    if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
+        sensormanager.getSensorData("battery");
+    } else {
+        // // disable task if sensor is inactive
+        // BatteryUpdate.disable();
+        readBattery();
+        batteryFilter();
+    }
+    // Update the LED afterwards
+    BatteryUpdate.setCallback(&updateLED);
+    BatteryUpdate.forceNextIteration();
+}
+
+void updateLED() {
+    // Set LED - connection status and battery level
+    #ifdef ARDUINO_LOLIN_D32_PRO
+        if (battery.percentage < 10) {        // low battery - flickering
+        led.setInterval(75);
+        led_var.ledValue = led.blink(255, 50);
+        ledcWrite(0, led_var.ledValue);
+        } else {
+            if (puara.get_StaIsConnected()) { // blinks when connected, cycle when disconnected
+                led.setInterval(1000);
+                led_var.ledValue = led.blink(255, 40);
+                ledcWrite(0, led_var.ledValue);
+            } else {
+                led.setInterval(4000);
+                led_var.ledValue = led.cycle(led_var.ledValue, 0, 255);
+                ledcWrite(0, led_var.ledValue);
+            }
+        }
+    #elif defined(ARDUINO_TINYPICO)
+        if (battery.percentage < 10) {                // low battery (red)
+            led.setInterval(20);
+            led_var.color = led.blink(255, 20);
+            tinypico.DotStar_SetPixelColor(led_var.color, 0, 0);
+        } else {
+            if (puara.get_StaIsConnected()) {         // blinks when connected, cycle when disconnected
+                led.setInterval(1000);                // RGB: 0, 128, 255 (Dodger Blue)
+                led_var.color = led.blink(255,20);
+                tinypico.DotStar_SetPixelColor(0, uint8_t(led_var.color/2), led_var.color);
+            } else {
+                led.setInterval(4000);
+                led_var.color = led.cycle(led_var.color, 0, 255);
+                tinypico.DotStar_SetPixelColor(0, uint8_t(led_var.color/2), led_var.color);
+            }
+        }
+    #endif  
+    // End battery update task and save end
+    saveEnd();
+    BatteryUpdate.setCallback(&getFuelGaugeData);
 }
 //=================COMMS Functions=================//
 #ifdef LIBMAPPER
 void updateLibmapper () {    
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-
+    saveStart();
     // Poll libmapper
     mpr_dev_poll(lm_dev, 0);
     
@@ -712,17 +724,13 @@ void updateLibmapper () {
     #ifdef touch_CAPSENSE
         mpr_sig_set_value(lm.touch, 0, capsense.touchStripsSize, MPR_INT32, &capsense.data);
     #endif
-
+    saveEnd();
 }
 #endif
 
 #ifdef OSC
 void updateOSC() {
-    // Check load
-    #ifdef LOADCHECKING
-    loadChecker();
-    #endif
-    
+    saveStart();
     // Sending continuous OSC messages
     if (puara.IP1_ready()) {
 
@@ -939,6 +947,7 @@ void updateOSC() {
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
         }
     }
+    saveEnd();
 }
 #endif
 
@@ -1045,6 +1054,9 @@ void setup() {
     Serial.println(puara.get_dmi_name().c_str());
     Serial.println("Edu Meneses\nMetalab - Société des Arts Technologiques (SAT)\nIDMIL - CIRMMT - McGill University");
     Serial.print("Firmware version: "); Serial.println(firmware_version); Serial.println("\n");
+
+    // enable all tasks
+    runnerTstick.enableAll();
 }
 
 //////////
