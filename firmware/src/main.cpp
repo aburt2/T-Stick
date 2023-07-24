@@ -13,7 +13,7 @@
 unsigned int firmware_version = 230801;
 
 // set the amount of capacitive stripes for the sopranino (15) or soprano (30)
-#define TSTICK_SIZE 60
+#define TSTICK_SIZE 16
 
 /*
   Choose the capacitive sensing board
@@ -312,7 +312,7 @@ struct Event {
 // Timing variables in t = 1/f
 const uint32_t LIBMAPPER_UPDATE_RATE =10 * TASK_MILLISECOND; // f = 100Hz
 const uint32_t OSC_UPDATE_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
-const uint32_t SENSOR_READ_RATE = TASK_MILLISECOND; // f = 1000Hz
+const uint32_t SENSOR_READ_RATE = 10 * TASK_MILLISECOND; // f = 1000Hz
 const uint32_t BATTERY_READ_RATE = 30 * TASK_SECOND; // t = 1s
 const uint32_t POWER_STATUS_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
 const uint32_t MAINTENANCE_RATE = 30 * TASK_SECOND; // t = 30s
@@ -330,7 +330,6 @@ void mapperButtonGestures();
 void mapperBattery();
 #endif
 #ifdef OSC
-void updateOSC();
 void oscFSR();
 void oscIMU();
 void oscTouch();
@@ -357,14 +356,15 @@ void scanActiveSensors();
 
 // Create Scheduler
 Scheduler runnerTstick;
+// Scheduler runnerComms;
 
 // Timing methods for testing
 // Callback methods prototypes
-bool tOn(); void tOff();
-std::map<unsigned int, std::vector<int>> taskStarts;
-std::map<unsigned int, std::vector<int>> taskEnds;
-unsigned long c1, c2;
-std::vector<int> tmp;
+// bool tOn(); void tOff();
+// std::map<unsigned int, std::vector<int>> taskStarts;
+// std::map<unsigned int, std::vector<int>> taskEnds;
+// unsigned long c1, c2;
+// std::vector<int> tmp;
 
 // //==========Tasks to check overhead===========//
 // // Fast Sensor Tasks
@@ -386,7 +386,7 @@ std::vector<int> tmp;
 
 //==========T-Stick Tasks===========//
 // Fast Sensor Tasks
-Task UpdateSensors (SENSOR_READ_RATE, 1000, &getTouchData, &runnerTstick, true);
+Task UpdateSensors (SENSOR_READ_RATE, TASK_FOREVER, &readSensors, &runnerTstick, true);
 
 // Slow Sensor Tasks
 Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
@@ -400,99 +400,54 @@ Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &ru
 Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &oscFSR, &runnerTstick,true);
 #endif
 // Maintenance Tasks
-Task SensorsScan (MAINTENANCE_RATE, 10, &scanInactiveSensors, &runnerTstick, true);
+// Task SensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
 //==========Functions for task scheduler===========//
-void saveStart() {
-    // Get current task
+void loadChecker() {
     Scheduler &s = Scheduler::currentScheduler();
     Task &t = s.currentTask();
-
-    c1 = millis();
-    taskStarts[t.getId()].push_back(c1);
-}
-
-void saveEnd() {
-    // Get current task
-    Scheduler &s = Scheduler::currentScheduler();
-    Task &t = s.currentTask();
-
-    c2 = millis();
-    taskEnds[t.getId()].push_back(c2);
-}
-bool tOn() {
-    // Get current task
-    Scheduler &s = Scheduler::currentScheduler();
-    Task &t = s.currentTask();
-
-    // Get timing
-    taskStarts[t.getId()] = tmp;
-    taskEnds[t.getId()] = tmp;
-    return true;
-}
-
-void tOff() {
-    // Get current task
-    Scheduler &s = Scheduler::currentScheduler();
-    Task &t = s.currentTask();
-
-    // Create arrays
-    std::vector<int> durationArray;
-    std::vector<int> periodArray;
-    std::vector<int> tmpPeriod;
-    tmpPeriod = taskStarts[t.getId()];
-    tmpPeriod[0] = 0;
-
-    // Calculate average duration and frequency
-    std::transform(taskEnds[t.getId()].begin(), taskEnds[t.getId()].end(), taskStarts[t.getId()].begin(), std::back_inserter(durationArray), std::minus<int>());
-    std::transform(taskStarts[t.getId()].begin(), taskStarts[t.getId()].end(), tmpPeriod.begin(), std::back_inserter(periodArray), std::minus<int>());
-    
-    // Get average
-    periodArray.erase(periodArray.begin());
-    float dur = std::accumulate(durationArray.begin(),durationArray.end(), 0.0)/ durationArray.size();
-    float per = std::accumulate(periodArray.begin(), periodArray.end(), 0.0)/ periodArray.size();
-    
-    std::cout
-    << "Task " << t.getId() << "done.\n" 
-    << "Average Period = " << per << "\n"
-    << "Duration = " << dur << "\n"
+    // Print out overrun and Start delay
+    std::cout 
+    << "Current Time: " << millis() << " Task" << t.getId() 
+    <<" Task start delay = " << t.getStartDelay()
+    <<" Overrun = " << t.getOverrun()
     << std::endl;
 }
 
 //================Maintenance Functions============//
-void scanInactiveSensors() {
-    // saveStart();
-    // Scan inactive sensors for the sensor manager
-    if (sensormanager.getnumInactiveSensors() != 0) {
-        sensormanager.scanInactiveI2C();
-    } else if (sensormanager.getnumActiveSensors() == 0) { 
-        // No active and inactive sensors means that asll sensors are disabled
-        std::cout << "All sensors are disabled. Skipping inactive sensor scan" << std::endl;
-    } else {
-        // No inactive sensors, but some active or disabled
-        std::cout << "All sensors are either active or disabled. Skipping inactive sensor scan" << std::endl;
-    }
+// void scanInactiveSensors() {
+//     // saveStart();
+//     // Scan inactive sensors for the sensor manager
+//     if (sensormanager.getnumInactiveSensors() != 0) {
+//         sensormanager.scanInactiveI2C();
+//     } else if (sensormanager.getnumActiveSensors() == 0) { 
+//         // No active and inactive sensors means that asll sensors are disabled
+//         std::cout << "All sensors are disabled. Skipping inactive sensor scan" << std::endl;
+//     } else {
+//         // No inactive sensors, but some active or disabled
+//         std::cout << "All sensors are either active or disabled. Skipping inactive sensor scan" << std::endl;
+//     }
     
-    // Set active sensor scan and schedule it immediately
-    SensorsScan.setCallback(&scanActiveSensors);
-    SensorsScan.forceNextIteration();
-}
+//     // Set active sensor scan and schedule it immediately
+//     SensorsScan.setCallback(&scanActiveSensors);
+//     SensorsScan.forceNextIteration();
+// }
 
-void scanActiveSensors() {
-    // Scan active sensors for the sensor manager
-    if (sensormanager.getnumActiveSensors() != 0) {
-        sensormanager.scanActiveI2C();
-    } else if (sensormanager.getnumInactiveSensors() == 0) { 
-        // No active and inactive sensors means that asll sensors are disabled
-        std::cout << "All sensors are disabled. Skipping active sensor scan" << std::endl;
-    } else {
-        // No inactive sensors, but some active or disabled
-        std::cout << "All sensors are either inactive or disabled. Skipping active sensor scan" << std::endl;
-    }
-    // saveEnd();
+// void scanActiveSensors() {
+//     // Scan active sensors for the sensor manager
+//     if (sensormanager.getnumActiveSensors() != 0) {
+//         sensormanager.scanActiveI2C();
+//     } else if (sensormanager.getnumInactiveSensors() == 0) { 
+//         // No active and inactive sensors means that asll sensors are disabled
+//         std::cout << "All sensors are disabled. Skipping active sensor scan" << std::endl;
+//     } else {
+//         // No inactive sensors, but some active or disabled
+//         std::cout << "All sensors are either inactive or disabled. Skipping active sensor scan" << std::endl;
+//     }
+//     // saveEnd();
 
-    // Set inactive sensor as next call
-    SensorsScan.setCallback(&scanInactiveSensors);
-}
+//     // Set inactive sensor as next call
+//     SensorsScan.setCallback(&scanInactiveSensors);
+// }
 
 void updatePowerStatus() {
     // saveStart();
@@ -637,7 +592,6 @@ void updateSensors() {
     UpdateSensors.setCallback(&readSensors);
 }
 void getFuelGaugeData() {
-    saveStart();
     // Get the Sensor data
     if (sensormanager.checkSensorStatus("battery") && (sensormanager.status == 1)) {
         sensormanager.getSensorData("battery");
@@ -689,12 +643,12 @@ void updateLED() {
     #endif  
 
     // Set new callback and force the next iteration
-    BatteryUpdate.setCallback(&mapperBattery);
-    BatteryUpdate.forceNextIteration();
+    BatteryUpdate.setCallback(&getFuelGaugeData);
+    // BatteryUpdate.forceNextIteration();
 }
 //=================COMMS Functions=================//
 #ifdef LIBMAPPER
-void updateLibmapper () {    
+void updateLibmapper () {  
     // saveStart();
     // Poll libmapper
     mpr_dev_poll(lm_dev, 0);
@@ -786,8 +740,10 @@ void mapperButtonGestures() {
     mpr_sig_set_value(lm.ttap, 0, 1, MPR_INT32, &sensors.dtap);
     mpr_sig_set_value(lm.dtap, 0, 1, MPR_INT32, &sensors.ttap);
 
-    // Set Callback back to beginning
-    libmapperUpdate.setCallback(&updateLibmapper);
+        // Update Callback
+    libmapperUpdate.setCallback(&mapperBattery);
+    libmapperUpdate.forceNextIteration();
+
 }
 
 void mapperBattery() {    
@@ -795,14 +751,14 @@ void mapperBattery() {
     // updating libmapper signals
     mpr_sig_set_value(lm.bat, 0, 1, MPR_FLT, &sensors.battery);
 
-    // Update Callback
-    BatteryUpdate.setCallback(&oscBattery);
-    BatteryUpdate.forceNextIteration();
+    // Set Callback back to beginning
+    libmapperUpdate.setCallback(&updateLibmapper);
 }
 #endif
 
 #ifdef OSC
 void oscFSR() {
+    // loadChecker();  
     // saveStart();
     // Sending continuous OSC messages
     if (puara.IP1_ready()) {
@@ -1053,30 +1009,29 @@ void oscButtonGestures() {
     }
 
     // Set new callback
-    OSCUpdate.setCallback(&oscFSR);
+    OSCUpdate.setCallback(&oscBattery);
+    OSCUpdate.forceNextIteration();
 }
 
 void oscBattery() {
-    // Sending battery data OSC
-    if (puara.IP1_ready()) {
-        if (event.battery) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
-            lo_send(osc1, oscNamespace.c_str(), "i", sensors.battery);
-        }
-    }
-    if (puara.IP2_ready()) {
-        if (event.battery) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
-            lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
-        }
-    }
+    // // Sending battery data OSC
+    // if (puara.IP1_ready()) {
+    //     if (event.battery) {
+    //         oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
+    //         lo_send(osc1, oscNamespace.c_str(), "i", sensors.battery);
+    //     }
+    // }
+    // if (puara.IP2_ready()) {
+    //     if (event.battery) {
+    //         oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
+    //         lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
+    //     }
+    // }
 
     // Set new callback and loop back to first task
-    OSCUpdate.setCallback(&getFuelGaugeData);
+    OSCUpdate.setCallback(&oscFSR);
 }
 #endif
-
-
 
 ///////////
 // setup //
@@ -1181,7 +1136,7 @@ void setup() {
     Serial.print("Firmware version: "); Serial.println(firmware_version); Serial.println("\n");
 
     // enable all tasks
-    runnerTstick.enableAll();
+    // runnerTstick.enableAll();
 }
 
 //////////

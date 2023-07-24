@@ -5,7 +5,7 @@ bool FuelGauge::initialise(uint8_t I2C_ADDR) {
     // Based on the advanced usage from https://learn.adafruit.com/adafruit-max17048-lipoly-liion-fuel-gauge-and-battery-monitor/arduino
     if (!maxlipo.begin()) {
         // if initialisation fails return 0
-        return 0;
+        return false;
     }
 
     // Set voltage
@@ -21,7 +21,7 @@ bool FuelGauge::initialise(uint8_t I2C_ADDR) {
     maxlipo.setAlertVoltages(2.0, 4.2);
 
     // Return 1 if everything went well
-    return 1;
+    return true;
 }
 
 bool FuelGauge::getSensorData() {

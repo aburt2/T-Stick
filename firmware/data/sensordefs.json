@@ -33,7 +33,7 @@
             "commType": "I2C",
             "address":54,
             "isActive":0,
-            "isEnabled":1,
+            "isEnabled":0,
             "classIdx":3
         },
         {

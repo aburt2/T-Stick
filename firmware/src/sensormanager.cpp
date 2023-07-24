@@ -166,7 +166,8 @@ void sensorManager::read_json_internal(std::string& contents) {
 }
 
 void sensorManager::scanInactiveI2C() {
-    byte error, address;
+    byte error;
+    uint8_t address;
     int nDevices;
     std::cout << "Scanning Inactive I2C devices..." << std::endl;
     nDevices = 0;
@@ -263,15 +264,15 @@ int sensorManager::initSensors() {
 
     // Initialise Detected Sensors
     for (auto & sensorPair : sensorMap) {
-        if (sensorPair.second.enabled && sensorPair.second.active) {
+        if (sensorPair.second.enabled) {
             //Initialise sensor
             if (sensorPair.second.sensorObject.init(sensorPair.second.address)) {
                 std::cout 
-                << "Sensor " << sensorPair.second.name << "initialised successfuly" << "\n"
+                << "Sensor " << sensorPair.second.name << " initialised successfuly" << "\n"
                 << std::endl;
             } else {
                 std::cout 
-                << "Sensor " << sensorPair.second.name << "failed to initialised" << "\n"
+                << "Sensor " << sensorPair.second.name << " failed to initialised" << "\n"
                 << std::endl;
                 // update inactive sensor list
                 sensorPair.second.active = false;
