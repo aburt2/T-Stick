@@ -313,7 +313,7 @@ struct Event {
 const uint32_t LIBMAPPER_UPDATE_RATE =10 * TASK_MILLISECOND; // f = 100Hz
 const uint32_t OSC_UPDATE_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
 const uint32_t SENSOR_READ_RATE = TASK_MILLISECOND; // f = 1000Hz
-const uint32_t BATTERY_READ_RATE = TASK_SECOND; // t = 1s
+const uint32_t BATTERY_READ_RATE = 30 * TASK_SECOND; // t = 1s
 const uint32_t POWER_STATUS_RATE = 10 * TASK_MILLISECOND; // f = 100Hz
 const uint32_t MAINTENANCE_RATE = 30 * TASK_SECOND; // t = 30s
 const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
@@ -323,8 +323,9 @@ const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
 void updateLibmapper();
 void mapperFSR();
 void mapperIMU();
+void mapperTouch();
 void mapperInertialGestures();
-void MapperTouchGestures();
+void mapperTouchGestures();
 void mapperButtonGestures();
 void mapperBattery();
 #endif
@@ -332,6 +333,7 @@ void mapperBattery();
 void updateOSC();
 void oscFSR();
 void oscIMU();
+void oscTouch();
 void oscInertialGestures();
 void oscTouchGestures();
 void oscButtonGestures();
@@ -364,42 +366,41 @@ std::map<unsigned int, std::vector<int>> taskEnds;
 unsigned long c1, c2;
 std::vector<int> tmp;
 
-//==========Tasks to check overhead===========//
-// Fast Sensor Tasks
-Task UpdateSensors (SENSOR_READ_RATE, 1000, &readSensors, &runnerTstick, false, &tOn, &tOff);
-
-// Slow Sensor Tasks
-Task BatteryUpdate (BATTERY_READ_RATE, 1000, &getFuelGaugeData, &runnerTstick, false, &tOn, &tOff);
-Task PowerStatusUpdate (POWER_STATUS_RATE, 1000, &updatePowerStatus, &runnerTstick, false, &tOn, &tOff);
-
-// Comms Tasks
-#ifdef LIBMAPPER
-Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, 1000, &updateLibmapper, &runnerTstick,false, &tOn, &tOff);
-#endif
-#ifdef OSC
-Task OSCUpdate (OSC_UPDATE_RATE, 1000, &updateOSC, &runnerTstick,false, &tOn, &tOff);
-#endif
-// Maintenance Tasks
-Task SensorsScan (MAINTENANCE_RATE, 10, &scanInactiveSensors, &runnerTstick, false, &tOn, &tOff);
-
-//==========T-Stick Tasks===========//
+// //==========Tasks to check overhead===========//
 // // Fast Sensor Tasks
-//Task UpdateSensors (SENSOR_READ_RATE, 1000, &getTouchData, &runnerTstick, true);
+// Task UpdateSensors (SENSOR_READ_RATE, 1000, &readSensors, &runnerTstick, false, &tOn, &tOff);
 
 // // Slow Sensor Tasks
-// Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
-// Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
+// Task BatteryUpdate (BATTERY_READ_RATE, 1000, &getFuelGaugeData, &runnerTstick, false, &tOn, &tOff);
+// Task PowerStatusUpdate (POWER_STATUS_RATE, 1000, &updatePowerStatus, &runnerTstick, false, &tOn, &tOff);
 
 // // Comms Tasks
 // #ifdef LIBMAPPER
-// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+// Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, 1000, &updateLibmapper, &runnerTstick,false, &tOn, &tOff);
 // #endif
 // #ifdef OSC
-// Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &updateOSC, &runnerTstick,true);
+// Task OSCUpdate (OSC_UPDATE_RATE, 1000, &updateOSC, &runnerTstick,false, &tOn, &tOff);
 // #endif
 // // Maintenance Tasks
-// Task InactiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanInactiveSensors, &runnerTstick, true);
-// Task ActiveSensorsScan (MAINTENANCE_RATE, TASK_FOREVER, &scanActiveSensors, &runnerTstick, true);
+// Task SensorsScan (MAINTENANCE_RATE, 10, &scanInactiveSensors, &runnerTstick, false, &tOn, &tOff);
+
+//==========T-Stick Tasks===========//
+// Fast Sensor Tasks
+Task UpdateSensors (SENSOR_READ_RATE, 1000, &getTouchData, &runnerTstick, true);
+
+// Slow Sensor Tasks
+Task BatteryUpdate (BATTERY_READ_RATE, TASK_FOREVER, &getFuelGaugeData, &runnerTstick, true);
+Task PowerStatusUpdate (POWER_STATUS_RATE, TASK_FOREVER, &updatePowerStatus, &runnerTstick, true);
+
+// Comms Tasks
+#ifdef LIBMAPPER
+Task libmapperUpdate (LIBMAPPER_UPDATE_RATE, TASK_FOREVER, &updateLibmapper, &runnerTstick,true);
+#endif
+#ifdef OSC
+Task OSCUpdate (OSC_UPDATE_RATE, TASK_FOREVER, &oscFSR, &runnerTstick,true);
+#endif
+// Maintenance Tasks
+Task SensorsScan (MAINTENANCE_RATE, 10, &scanInactiveSensors, &runnerTstick, true);
 //==========Functions for task scheduler===========//
 void saveStart() {
     // Get current task
@@ -459,7 +460,7 @@ void tOff() {
 
 //================Maintenance Functions============//
 void scanInactiveSensors() {
-    saveStart();
+    // saveStart();
     // Scan inactive sensors for the sensor manager
     if (sensormanager.getnumInactiveSensors() != 0) {
         sensormanager.scanInactiveI2C();
@@ -487,26 +488,26 @@ void scanActiveSensors() {
         // No inactive sensors, but some active or disabled
         std::cout << "All sensors are either inactive or disabled. Skipping active sensor scan" << std::endl;
     }
-    saveEnd();
+    // saveEnd();
 
     // Set inactive sensor as next call
     SensorsScan.setCallback(&scanInactiveSensors);
 }
 
 void updatePowerStatus() {
-    saveStart();
+    // saveStart();
     // go to deep sleep if double press button
     if (gestures.getButtonDTap()){
         std::cout << "\nEntering deep sleep.\n\nGoodbye!\n" << std::endl;
         delay(1000);
         esp_deep_sleep_start();
     }
-    saveEnd();
+    // saveEnd();
 }
 //================Sensor Functions=================//
 void readSensors() {
     // Save start time
-    saveStart();
+    // saveStart();
 
     // Get button and fsr data
     button.readButton();
@@ -630,7 +631,7 @@ void updateSensors() {
         std::cout << "Sensor manager was not initialised.\nSkipping reading sensor data. Check sensor configs were correct.\n" << std::endl;
     }
     // Stop reading sensor data
-    saveEnd();
+    // saveEnd();
 
     // End sensor read task and reset to readSensors
     UpdateSensors.setCallback(&readSensors);
@@ -686,36 +687,82 @@ void updateLED() {
             }
         }
     #endif  
-    // End battery update task and save end
-    saveEnd();
-    BatteryUpdate.setCallback(&getFuelGaugeData);
+
+    // Set new callback and force the next iteration
+    BatteryUpdate.setCallback(&mapperBattery);
+    BatteryUpdate.forceNextIteration();
 }
 //=================COMMS Functions=================//
 #ifdef LIBMAPPER
 void updateLibmapper () {    
-    saveStart();
+    // saveStart();
     // Poll libmapper
     mpr_dev_poll(lm_dev, 0);
-    
+
+    // Set next libmapper task
+    libmapperUpdate.setCallback(&mapperFSR);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperFSR() {        
     // Update libmapper outputs
     // updating libmapper signals
     mpr_sig_set_value(lm.fsr, 0, 1, MPR_FLT, &sensors.fsr);
+
+    // Set new Callback and force next iteration
+    libmapperUpdate.setCallback(&mapperIMU);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperIMU() {    
+    // Update libmapper outputs
+    // updating libmapper signals
     mpr_sig_set_value(lm.accel, 0, 3, MPR_FLT, &sensors.accl);
     mpr_sig_set_value(lm.gyro, 0, 3, MPR_FLT, &sensors.gyro);
     mpr_sig_set_value(lm.magn, 0, 3, MPR_FLT, &sensors.magn);
     mpr_sig_set_value(lm.quat, 0, 4, MPR_FLT, &sensors.quat);
     mpr_sig_set_value(lm.ypr, 0, 3, MPR_FLT, &sensors.ypr);
+
+    // Set new Callback and force next iteration
+    libmapperUpdate.setCallback(&mapperTouch);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperTouch() {    
+    // Update libmapper outputs
+    // updating libmapper signals
+    // Libmapper signals
+    #ifdef touch_TRILL
+        mpr_sig_set_value(lm.touch, 0, touch.touchSize, MPR_INT32, &touch.touch);
+    #endif
+    #ifdef touch_CAPSENSE
+        mpr_sig_set_value(lm.touch, 0, capsense.touchStripsSize, MPR_INT32, &capsense.data);
+    #endif
+    // saveEnd();
+
+    // Set new Callback and force next iteration
+    libmapperUpdate.setCallback(&mapperInertialGestures);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperInertialGestures() {    
+    // Update libmapper outputs
+    // updating libmapper signals
     mpr_sig_set_value(lm.shake, 0, 3, MPR_FLT, &sensors.shake);
     mpr_sig_set_value(lm.jab, 0, 3, MPR_FLT, &sensors.jab);
+
+    // Set new Callback and force next iteration
+    libmapperUpdate.setCallback(&mapperTouchGestures);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperTouchGestures() {    
+    // Update libmapper outputs
+    // updating libmapper signals
     mpr_sig_set_value(lm.rub, 0, 1, MPR_FLT, &sensors.rub);
     mpr_sig_set_value(lm.brush, 0, 1, MPR_FLT, &sensors.brush);
     mpr_sig_set_value(lm.multirub, 0, 4, MPR_FLT, &sensors.multirub);
     mpr_sig_set_value(lm.multibrush, 0, 4, MPR_FLT, &sensors.multibrush);
-    mpr_sig_set_value(lm.count, 0, 1, MPR_INT32, &sensors.count);
-    mpr_sig_set_value(lm.tap, 0, 1, MPR_INT32, &sensors.tap);
-    mpr_sig_set_value(lm.ttap, 0, 1, MPR_INT32, &sensors.dtap);
-    mpr_sig_set_value(lm.dtap, 0, 1, MPR_INT32, &sensors.ttap);
-    mpr_sig_set_value(lm.bat, 0, 1, MPR_FLT, &sensors.battery);
 
     // Libmapper signals
     #ifdef touch_TRILL
@@ -724,13 +771,88 @@ void updateLibmapper () {
     #ifdef touch_CAPSENSE
         mpr_sig_set_value(lm.touch, 0, capsense.touchStripsSize, MPR_INT32, &capsense.data);
     #endif
-    saveEnd();
+    // saveEnd();
+
+    // Set new Callback and force next iteration
+    libmapperUpdate.setCallback(&mapperButtonGestures);
+    libmapperUpdate.forceNextIteration();
+}
+
+void mapperButtonGestures() {    
+    // Update libmapper outputs
+    // updating libmapper signals
+    mpr_sig_set_value(lm.count, 0, 1, MPR_INT32, &sensors.count);
+    mpr_sig_set_value(lm.tap, 0, 1, MPR_INT32, &sensors.tap);
+    mpr_sig_set_value(lm.ttap, 0, 1, MPR_INT32, &sensors.dtap);
+    mpr_sig_set_value(lm.dtap, 0, 1, MPR_INT32, &sensors.ttap);
+
+    // Set Callback back to beginning
+    libmapperUpdate.setCallback(&updateLibmapper);
+}
+
+void mapperBattery() {    
+    // Update libmapper outputs
+    // updating libmapper signals
+    mpr_sig_set_value(lm.bat, 0, 1, MPR_FLT, &sensors.battery);
+
+    // Update Callback
+    BatteryUpdate.setCallback(&oscBattery);
+    BatteryUpdate.forceNextIteration();
 }
 #endif
 
 #ifdef OSC
-void updateOSC() {
-    saveStart();
+void oscFSR() {
+    // saveStart();
+    // Sending continuous OSC messages
+    if (puara.IP1_ready()) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/fsr");
+            lo_send(osc1, oscNamespace.c_str(), "i", sensors.fsr);
+    }
+    if (puara.IP2_ready()) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/fsr");
+            lo_send(osc2, oscNamespace.c_str(), "i", sensors.fsr);
+    }
+
+    // Set new callback and force next iteration
+    OSCUpdate.setCallback(&oscIMU);
+    OSCUpdate.forceNextIteration();
+}
+
+void oscIMU() {
+    // saveStart();
+    // Sending continuous OSC messages
+    if (puara.IP1_ready()) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/accl");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.accl[0], sensors.accl[1], sensors.accl[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/gyro");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.gyro[0], sensors.gyro[1], sensors.gyro[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/magn");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.magn[0], sensors.magn[1], sensors.magn[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "orientation");
+            lo_send(osc1, oscNamespace.c_str(), "ffff", sensors.quat[0], sensors.quat[1], sensors.quat[2], sensors.quat[3]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "ypr");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.ypr[0], sensors.ypr[1], sensors.ypr[2]);
+    }
+    if (puara.IP2_ready()) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/accl");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.accl[0], sensors.accl[1], sensors.accl[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/gyro");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.gyro[0], sensors.gyro[1], sensors.gyro[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/magn");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.magn[0], sensors.magn[1], sensors.magn[2]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "orientation");
+            lo_send(osc2, oscNamespace.c_str(), "ffff", sensors.quat[0], sensors.quat[1], sensors.quat[2], sensors.quat[3]);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "ypr");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.ypr[0], sensors.ypr[1], sensors.ypr[2]);
+    }
+    // Set new callback and force next iteration
+    OSCUpdate.setCallback(&oscTouch);
+    OSCUpdate.forceNextIteration();
+}
+
+void oscTouch() {
+    // saveStart();
     // Sending continuous OSC messages
     if (puara.IP1_ready()) {
 
@@ -776,26 +898,6 @@ void updateOSC() {
                     capsense.data[15]
             );
             #endif
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/fsr");
-            lo_send(osc1, oscNamespace.c_str(), "i", sensors.fsr);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/all");
-            lo_send(osc1, oscNamespace.c_str(), "f", gestures.touchAll);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/top");
-            lo_send(osc1, oscNamespace.c_str(), "f", gestures.touchTop);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/middle");
-            lo_send(osc1, oscNamespace.c_str(), "f", gestures.touchMiddle);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/bottom");
-            lo_send(osc1, oscNamespace.c_str(), "f", gestures.touchBottom);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/accl");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.accl[0], sensors.accl[1], sensors.accl[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/gyro");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.gyro[0], sensors.gyro[1], sensors.gyro[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/magn");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.magn[0], sensors.magn[1], sensors.magn[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "orientation");
-            lo_send(osc1, oscNamespace.c_str(), "ffff", sensors.quat[0], sensors.quat[1], sensors.quat[2], sensors.quat[3]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "ypr");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.ypr[0], sensors.ypr[1], sensors.ypr[2]);
     }
     if (puara.IP2_ready()) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/capsense");
@@ -840,29 +942,43 @@ void updateOSC() {
                     capsense.data[15]
             );
             #endif
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/fsr");
-            lo_send(osc2, oscNamespace.c_str(), "i", sensors.fsr);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/all");
-            lo_send(osc2, oscNamespace.c_str(), "f", gestures.touchAll);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/top");
-            lo_send(osc2, oscNamespace.c_str(), "f", gestures.touchTop);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/middle");
-            lo_send(osc2, oscNamespace.c_str(), "f", gestures.touchMiddle);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/touch/bottom");
-            lo_send(osc2, oscNamespace.c_str(), "f", gestures.touchBottom);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/accl");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.accl[0], sensors.accl[1], sensors.accl[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/gyro");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.gyro[0], sensors.gyro[1], sensors.gyro[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "raw/magn");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.magn[0], sensors.magn[1], sensors.magn[2]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "orientation");
-            lo_send(osc2, oscNamespace.c_str(), "ffff", sensors.quat[0], sensors.quat[1], sensors.quat[2], sensors.quat[3]);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "ypr");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.ypr[0], sensors.ypr[1], sensors.ypr[2]);
     }
 
-    // Sending discrete OSC messages
+   // Set new callback and force next iteration
+    OSCUpdate.setCallback(&oscInertialGestures);
+    OSCUpdate.forceNextIteration();
+}
+
+void oscInertialGestures() {
+  // Sending discrete OSC messages
+    if (puara.IP1_ready()) {
+       if (event.shake) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/shakexyz");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.shake[0], sensors.shake[1], sensors.shake[2]);
+        }
+        if (event.jab) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/jabxyz");
+            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.jab[0], sensors.jab[1], sensors.jab[2]);
+        }
+    }
+    if (puara.IP2_ready()) {
+        if (event.shake) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/shakexyz");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.shake[0], sensors.shake[1], sensors.shake[2]);
+        }
+        if (event.jab) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/jabxyz");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.jab[0], sensors.jab[1], sensors.jab[2]);
+        }
+    }
+
+    // Set new callback and force next iteration
+    OSCUpdate.setCallback(&oscTouchGestures);
+    OSCUpdate.forceNextIteration();
+}
+
+void oscTouchGestures() {
+    // Sending touch gestures OSC
     if (puara.IP1_ready()) {
         if (event.brush) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/brush");
@@ -876,14 +992,30 @@ void updateOSC() {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/multirub");
             lo_send(osc1, oscNamespace.c_str(), "fff", sensors.multirub[0], sensors.multirub[1], sensors.multirub[2]);
         }
-        if (event.shake) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/shakexyz");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.shake[0], sensors.shake[1], sensors.shake[2]);
+    }
+    if (puara.IP2_ready()) {
+        if (event.brush) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/brush");
+            lo_send(osc2, oscNamespace.c_str(), "f", sensors.brush);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/multibrush");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.multibrush[0], sensors.multibrush[1], sensors.multibrush[2]);
         }
-        if (event.jab) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/jabxyz");
-            lo_send(osc1, oscNamespace.c_str(), "fff", sensors.jab[0], sensors.jab[1], sensors.jab[2]);
+        if (event.rub) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/rub");
+            lo_send(osc2, oscNamespace.c_str(), "f", sensors.rub);
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/multirub");
+            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.multirub[0], sensors.multirub[1], sensors.multirub[2]);
         }
+    }
+
+    // Set new callback and force next iteration
+    OSCUpdate.setCallback(&oscButtonGestures);
+    OSCUpdate.forceNextIteration();
+}
+
+void oscButtonGestures() {
+    // Sending button gestures OSC
+    if (puara.IP1_ready()) {
         if (event.count) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/button/count");
             lo_send(osc1, oscNamespace.c_str(), "i", sensors.count);
@@ -900,32 +1032,8 @@ void updateOSC() {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/button/ttap");
             lo_send(osc1, oscNamespace.c_str(), "i", sensors.ttap);
         }
-        if (event.battery) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
-            lo_send(osc1, oscNamespace.c_str(), "i", sensors.battery);
-        }
     }
     if (puara.IP2_ready()) {
-        if (event.brush) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/brush");
-            lo_send(osc2, oscNamespace.c_str(), "f", sensors.brush);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/multibrush");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.multibrush[0], sensors.multibrush[1], sensors.multibrush[2]);
-        }
-        if (event.rub) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/rub");
-            lo_send(osc2, oscNamespace.c_str(), "f", sensors.rub);
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/multirub");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.multirub[0], sensors.multirub[1], sensors.multirub[2]);
-        }
-        if (event.shake) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/shakexyz");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.shake[0], sensors.shake[1], sensors.shake[2]);
-        }
-        if (event.jab) {
-            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/jabxyz");
-            lo_send(osc2, oscNamespace.c_str(), "fff", sensors.jab[0], sensors.jab[1], sensors.jab[2]);
-        }
         if (event.count) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/button/count");
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.count);
@@ -942,12 +1050,29 @@ void updateOSC() {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "instrument/button/ttap");
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.ttap);
         }
+    }
+
+    // Set new callback
+    OSCUpdate.setCallback(&oscFSR);
+}
+
+void oscBattery() {
+    // Sending battery data OSC
+    if (puara.IP1_ready()) {
+        if (event.battery) {
+            oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
+            lo_send(osc1, oscNamespace.c_str(), "i", sensors.battery);
+        }
+    }
+    if (puara.IP2_ready()) {
         if (event.battery) {
             oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), "battery");
             lo_send(osc2, oscNamespace.c_str(), "i", sensors.battery);
         }
     }
-    saveEnd();
+
+    // Set new callback and loop back to first task
+    OSCUpdate.setCallback(&getFuelGaugeData);
 }
 #endif
 
