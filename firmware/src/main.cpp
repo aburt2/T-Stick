@@ -295,13 +295,13 @@ void setup() {
       ledcAttachPin(pin.led, 0);
     #endif
 
-    // INitialise Fuel Gauge
-    std::cout << "    Initializing fuel gauge... ";
-    if (!maxlipo.begin()) { 
-        std::cout << "done" << std::endl;
-    } else {
-        std::cout << "initialization failed!" << std::endl;
-    }
+    // // INitialise Fuel Gauge
+    // std::cout << "    Initializing fuel gauge... ";
+    // if (!maxlipo.begin()) { 
+    //     std::cout << "done" << std::endl;
+    // } else {
+    //     std::cout << "initialization failed!" << std::endl;
+    // }
 
     std::cout << "    Initializing button configuration... ";
     if (button.initButton(pin.button)) {
@@ -412,11 +412,11 @@ void loop() {
     #endif
 
     // read battery
-    if (millis() - battery.interval > battery.timer) {
-      battery.timer = millis();
-      battery.percentage = maxlipo.cellPercent();
-      battery.value = maxlipo.cellVoltage();
-    }
+    // if (millis() - battery.interval > battery.timer) {
+    //   battery.timer = millis();
+    //   battery.percentage = maxlipo.cellPercent();
+    //   battery.value = maxlipo.cellVoltage();
+    // }
 
     // read IMU and update puara-gestures
         if (imu.accelAvailable()) {
