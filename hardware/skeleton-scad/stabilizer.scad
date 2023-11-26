@@ -17,7 +17,7 @@ module column()
 {
      translate([-stabilizer_thickness/2,0,0]) intersection()
     {
-        translate([0,-stabilizer_thickness/2,PCBZ+0.3])
+        translate([0,-stabilizer_thickness/2,PCBZ])
             cube([stabilizer_thickness, stabilizer_thickness, 1000]);
         pipe_ID_volume();
     }
