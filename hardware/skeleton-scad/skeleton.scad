@@ -99,4 +99,4 @@ module skeleton()
 }
 
 rotate([180,0,0]) skeleton();
-translate([0,40,0]) rotate([180,0,0]) connector(inch);
+//translate([0,40,0]) rotate([180,0,0]) connector(inch);
