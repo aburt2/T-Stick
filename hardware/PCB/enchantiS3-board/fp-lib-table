@@ -7,4 +7,6 @@
   (lib (name "NCP167AMX330TBG-footprints")(type "KiCad")(uri "${KIPRJMOD}/Libraries/NCP167AMX330TBG/NCP167AMX330TBG-footprints.pretty")(options "")(descr ""))
   (lib (name "NL17SV08-footprints")(type "KiCad")(uri "${KIPRJMOD}/Libraries/NL17SV08/NL17-footprints.pretty")(options "")(descr ""))
   (lib (name "MAX3378E-footprints")(type "KiCad")(uri "${KIPRJMOD}/Libraries/MAX3378E/MAX3378E-footprints.pretty")(options "")(descr ""))
+  (lib (name "AP9221-footprints")(type "KiCad")(uri "${KIPRJMOD}/Libraries/AP9221/AP9221-footprints.pretty")(options "")(descr ""))
+  (lib (name "S8240A-footprints")(type "KiCad")(uri "${KIPRJMOD}/Libraries/Battery-Protection/S8240A-footprints.pretty")(options "")(descr ""))
 )

@@ -8,4 +8,6 @@
   (lib (name "button-symbol")(type "KiCad")(uri "${KIPRJMOD}/Libraries/Buttons/B3U_1000P/button-symbol.kicad_sym")(options "")(descr ""))
   (lib (name "NL17SV08")(type "KiCad")(uri "${KIPRJMOD}/Libraries/NL17SV08/NL17.kicad_sym")(options "")(descr ""))
   (lib (name "MAX3378E")(type "KiCad")(uri "${KIPRJMOD}/Libraries/MAX3378E/MAX3378E.kicad_sym")(options "")(descr ""))
+  (lib (name "ap9221")(type "KiCad")(uri "${KIPRJMOD}/Libraries/AP9221/ap9221.kicad_sym")(options "")(descr ""))
+  (lib (name "S8240")(type "KiCad")(uri "${KIPRJMOD}/Libraries/Battery-Protection/S8240.kicad_sym")(options "")(descr ""))
 )
