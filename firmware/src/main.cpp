@@ -1115,6 +1115,13 @@ void setup() {
 
     // Start Serial Monitor
     Serial.begin(115200);
+
+    int freq = getCpuFrequencyMhz();
+    std::cout << " Current CPU Frequency: " << freq << "MHz" << std::endl;
+    // Set CPU Frequency to max
+    setCpuFrequencyMhz(240);
+    freq = getCpuFrequencyMhz();
+    std::cout << " New CPU Frequency: " << freq << "MHz" << std::endl;
     
     // Set monitor type and start
     puara.start(Puara::JTAG_MONITOR);
