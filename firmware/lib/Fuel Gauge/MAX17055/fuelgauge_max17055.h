@@ -1,12 +1,18 @@
+#ifndef _MAX17055_FUELGAUGE_H_
+#define _MAX17055_FUELGAUGE_H_
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <iostream>
-
+#include <batt.h>
 // Inspired by https://github.com/AwotG/Arduino-MAX17055_Driver
 // Simple library for the MAX17055 fuel gauge
 
+
 // Fuel Gauge Config
 struct fuelgauge_config {
+    // Two wire peripheral
+    TwoWire &_i2c;
     // Initialisation Elements
     uint8_t i2c_addr;
     uint16_t designcap;
@@ -24,8 +30,7 @@ struct fuelgauge_config {
     uint16_t cycles;
 };
 
-
-class FUELGAUGE
+class MAX17055_FUELGAUGE: public FUELGAUGE<fuelgauge_config>
 {
     public:
         // register addresses 
@@ -55,6 +60,9 @@ class FUELGAUGE
         FULLCAPNORM_REG = 0x23, // Register for learned parameter full capacity (normalised)
         CGAIN_REG       = 0x2E, // Register for ADC gain for current
         };
+
+        // Comms peripheral
+        TwoWire *_i2c;
 
         // Battery Parameters
         // Initialisation Elements
@@ -104,7 +112,7 @@ class FUELGAUGE
 
         // methods
         // Initialise Fuel Gauge
-        bool init(fuelgauge_config config, bool reset = false);
+        bool init(batt_config config, bool reset = false);
 
         // Get Battery Data (analog meausrements + modelguage outputs)
         void getBatteryData();
@@ -157,3 +165,5 @@ class FUELGAUGE
         void writeReg16Bit(uint8_t reg, uint16_t value);
         bool writeVerifyReg16Bit(uint8_t reg, uint16_t value);
 };
+
+#endif

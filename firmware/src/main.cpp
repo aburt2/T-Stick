@@ -592,6 +592,14 @@ void readAnalog() {
         #ifdef LDO2
             digitalWrite(LDO_PIN, LOW); // disable second LDO
         #endif
+
+        // Isolate pullup pins to lowe deep sleep 
+        #ifdef NUM_ISOLATE_PINS
+        for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
+            rtc_gpio_isolate(sleep_pins[idx]);
+        }   
+        #endif
+
         delay(1000);
         esp_deep_sleep_start();
     }
@@ -703,7 +711,7 @@ void changeLED() {
 
 void updateMIMU() {
     // Get IMU data
-    if (event.mimu || TSTICK_IMU == MIMUBOARD::mimu_LSM9DS1) {
+    if (event.mimu) {
         readIMU();
         event.mimu = false;
         imu.clearInterrupt();
@@ -744,6 +752,13 @@ void updateMIMU() {
 void setup() {
     // Set CPU Frequency to max
     setCpuFrequencyMhz(240);
+
+    // Disable hold on gpio pins
+    #ifdef NUM_ISOLATE_PINS
+    for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
+        rtc_gpio_hold_dis(sleep_pins[idx]);
+    }   
+    #endif
 
     // Enable LDO2
     #ifdef LDO2
@@ -795,15 +810,12 @@ void setup() {
     esp_sleep_enable_ext0_wakeup(SLEEP_PIN,0); // 1 = High, 0 = Low
 
     std::cout << "    Initializing IMU... ";
-    imu.initIMU(TSTICK_IMU);
+    imu.initIMU(motion_config);
 
     // If the IMU interrupt pin is specified, setup the interrupt
     #ifdef IMU_INT_PIN
-    if ((TSTICK_IMU == MIMUBOARD::mimu_ICM20948)) {
-        // Setup interrupt
-        pinMode(IMU_INT_PIN, INPUT_PULLUP);
-        attachInterrupt(IMU_INT_PIN, imu_isr, CHANGE);
-    }
+    pinMode(IMU_INT_PIN, INPUT_PULLUP);
+    attachInterrupt(IMU_INT_PIN, imu_isr, CHANGE);
     #endif
 
     readIMU(); // get some data and save it to avoid puara-gesture crashes due to empty buffer

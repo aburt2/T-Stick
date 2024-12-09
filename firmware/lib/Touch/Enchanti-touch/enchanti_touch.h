@@ -5,7 +5,7 @@
 #include "Wire.h"
 #include <ESP32DMASPIMaster.h>
 #include <iostream>
-#include <../touch-common.h>
+#include <touch.h>
 
 #define ENCHANTI_BASETOUCHSIZE 60
 #define ENCHANTI_BUFFERSIZE 256
@@ -29,16 +29,15 @@ enum COMMS {
     I2C_MODE = 2
 };
 
-// Default config
-static touch_config default_config = {
-    -1, // default use the trill craft device
-    ENCHANTI_BASETOUCHSIZE, // default touch size
-    0, // noise threshold
-    Mode::DIFF, // touch processing mode
-    COMMS::I2C_MODE, // comm mode 
+struct enchanti_touch_config {
+    int touchdevice; // what device is used for touch sensing
+    int touchsize; // Size of touch sensor array
+    int touch_threshold; // threshold to detect touch
+    int touch_mode; // mode for processing touch data
+    int comm_mode; // communication mode for the touch sensor
 };
 
-class EnchantiTouch
+class EnchantiTouch: public Touch<enchanti_touch_config>
 {
     public:
         // Register addresses for touch data
@@ -96,4 +95,5 @@ class EnchantiTouch
         void readI2CBuffer(uint8_t i2c_addr, uint8_t reg, uint8_t length, int offset = 0);
         void readSPIBuffer(uint16_t length, int offset = 0);
 };
+
 #endif

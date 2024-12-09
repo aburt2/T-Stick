@@ -1,7 +1,6 @@
 // Include Bela Trill Libraries
 
-#include "trill-touch.h"
-
+#include "trill_touch.h"
 
 uint8_t TrillTouch::initTouch(touch_config trill_config) {
     // Compute number of boards

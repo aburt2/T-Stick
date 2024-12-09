@@ -9,7 +9,7 @@
 
 // CY8CMBR3116
 
-#include "capsense.h"
+#include "idmil_touch.h"
 
 #define BUTTON_STAT 0xAA  // Address to read the status of the sensors (2 bytes)
 
@@ -169,6 +169,7 @@ void Capsense::cookData() {
           newData = 1;
         }
         touch[i] = bitReadRightToLeft(data[i/8],(i%8));
+        discreteTouch[i] = touch[i];
     }
 }
 

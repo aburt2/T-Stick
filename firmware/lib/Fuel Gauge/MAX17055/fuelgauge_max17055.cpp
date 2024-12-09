@@ -1,7 +1,10 @@
-#include "batt.h"
+#include "fuelgauge_max17055.h"
 
-bool FUELGAUGE::init(fuelgauge_config config, bool reset)
+bool MAX17055_FUELGAUGE::init(batt_config config, bool reset)
 {
+    // Save comms peripheral
+    _i2c = &config._i2c;
+
     // Print out fuel gauge config
     std::cout << "\n"
               << "    Design Capacity: " << config.designcap << " mAh\n"
@@ -28,8 +31,8 @@ bool FUELGAUGE::init(fuelgauge_config config, bool reset)
         raw_soc = config.soc;
     }
 
-    Wire.beginTransmission(i2c_addr);
-    byte error = Wire.endTransmission();
+    _i2c->beginTransmission(i2c_addr);
+    byte error = _i2c->endTransmission();
     if (error == 0) //Device Acknowledged
     {
         uint16_t STATUS = readReg16Bit(STATUS_REG);
@@ -126,7 +129,7 @@ bool FUELGAUGE::init(fuelgauge_config config, bool reset)
 }
 
 // Functions for setting design cap and rsense
-void FUELGAUGE::setrsense(int resist_sense) {
+void MAX17055_FUELGAUGE::setrsense(int resist_sense) {
     // Set current sensing resistor value in mOhms
     rsense = resist_sense;
 
@@ -135,7 +138,7 @@ void FUELGAUGE::setrsense(int resist_sense) {
 }
 
 /// Set design capacity (for use externally)
-void FUELGAUGE::setdesigncap(int design_capacity) {
+void MAX17055_FUELGAUGE::setdesigncap(int design_capacity) {
     // Set design capacity in mAh
     designcap = design_capacity;
 
@@ -144,19 +147,19 @@ void FUELGAUGE::setdesigncap(int design_capacity) {
 }
 
 // Get Fuel Gauge data functions
-void FUELGAUGE::getsoc() {
+void MAX17055_FUELGAUGE::getsoc() {
     // Get the State of charge
     raw_soc = readReg16Bit(REPSOC_REG);
     rep_soc = percentage_multiplier * raw_soc;
 }
 
-void FUELGAUGE::getcapacity() {
+void MAX17055_FUELGAUGE::getcapacity() {
     // Get Battery Capacity
     raw_capacity = readReg16Bit(REPCAP_REG);
     rep_capacity = capacity_multiplier_mAH * raw_capacity;
 }
 
-void FUELGAUGE::getvoltage() {
+void MAX17055_FUELGAUGE::getvoltage() {
     // Get instantaneous voltage
     raw_inst_voltage = readReg16Bit(VCELL_REG);
     rep_inst_voltage = voltage_multiplier_V * raw_inst_voltage;
@@ -166,7 +169,7 @@ void FUELGAUGE::getvoltage() {
     rep_avg_voltage = voltage_multiplier_V * raw_avg_voltage;
 }
 
-void FUELGAUGE::getcurrent(){
+void MAX17055_FUELGAUGE::getcurrent(){
     // Get instantaneous current
     raw_inst_current = readReg16Bit(CURRENT_REG);
     rep_inst_current = current_multiplier_mV * raw_inst_current;
@@ -176,25 +179,25 @@ void FUELGAUGE::getcurrent(){
     rep_avg_current = current_multiplier_mV * raw_avg_current;
 }
 
-void FUELGAUGE::getage() {
+void MAX17055_FUELGAUGE::getage() {
     // Get Battery Age
     raw_age = readReg16Bit(AGE_REG);
     rep_age = time_multiplier_Hours * int(raw_age);
 }
 
-void FUELGAUGE::gettte() {
+void MAX17055_FUELGAUGE::gettte() {
     // Get time to empty
     raw_tte = readReg16Bit(TTE_REG);
     rep_tte = time_multiplier_Hours * int(raw_tte);
 }
 
-void FUELGAUGE::getttf() {
+void MAX17055_FUELGAUGE::getttf() {
     // Get time to full
     raw_ttf = readReg16Bit(TTF_REG);
     rep_ttf = time_multiplier_Hours * int(raw_ttf);
 }
 
-void FUELGAUGE::getparameters() {
+void MAX17055_FUELGAUGE::getparameters() {
     // Get learned parameters
     rcomp = readReg16Bit(RCOMPP0_REG);
     tempco = readReg16Bit(TEMPCO_REG);
@@ -212,7 +215,7 @@ void FUELGAUGE::getparameters() {
     }
 }
 
-void FUELGAUGE::getBatteryData() {
+void MAX17055_FUELGAUGE::getBatteryData() {
     // Read all the battery data from the registers
     getsoc();
     getcapacity();
@@ -225,7 +228,7 @@ void FUELGAUGE::getBatteryData() {
     getparameters();
 }
 
-void FUELGAUGE::getBatteryStatus() {
+void MAX17055_FUELGAUGE::getBatteryStatus() {
     // Get Battery Status
     // Read status register
     raw_status = readReg16Bit(STATUS_REG);
@@ -235,7 +238,7 @@ void FUELGAUGE::getBatteryStatus() {
     bat_status = !bat_status; // battery status 0 when present, must invert
 }
 
-void FUELGAUGE::getBatteryInsertion() {
+void MAX17055_FUELGAUGE::getBatteryInsertion() {
     // Get Battery Insertion
     // Read status register
     raw_status = readReg16Bit(STATUS_REG);
@@ -247,7 +250,7 @@ void FUELGAUGE::getBatteryInsertion() {
     writeVerifyReg16Bit(STATUS_REG,raw_status&0xF7FF);
 }
 
-void FUELGAUGE::getBatteryRemoval() {
+void MAX17055_FUELGAUGE::getBatteryRemoval() {
     // Get Battery Insertion
     // Read status register
     raw_status = readReg16Bit(STATUS_REG);
@@ -259,25 +262,25 @@ void FUELGAUGE::getBatteryRemoval() {
     writeVerifyReg16Bit(STATUS_REG,raw_status&0x7FFF);
 }
 
-void FUELGAUGE::getBatteryInfo() {
+void MAX17055_FUELGAUGE::getBatteryInfo() {
     // Get whether a battery has been, inserted, removed and if it is present
     getBatteryStatus();
     getBatteryRemoval();
     getBatteryInsertion();
 }
 
-float FUELGAUGE::getcapacityLSB() {
+float MAX17055_FUELGAUGE::getcapacityLSB() {
     // return the capacity LSB
     return capacity_multiplier_mAH;
 }
 
-float FUELGAUGE::getcurrentLSB() {
+float MAX17055_FUELGAUGE::getcurrentLSB() {
     // return the current LSB
     return current_multiplier_mV;
 }
 
 // Private Methods
-void FUELGAUGE::updateMultipliers() {
+void MAX17055_FUELGAUGE::updateMultipliers() {
     // Compute and store new multipliers
     capacity_multiplier_mAH = (base_capacity_multiplier_mAh/rsense); //refer to row "Capacity"
     current_multiplier_mV = (base_current_multiplier_mAh/rsense); //refer to row "Current"
@@ -288,17 +291,17 @@ void FUELGAUGE::updateMultipliers() {
 }
 
 
-void FUELGAUGE::writeReg16Bit(uint8_t reg, uint16_t value)
+void MAX17055_FUELGAUGE::writeReg16Bit(uint8_t reg, uint16_t value)
 {
   //Write order is LSB first, and then MSB. Refer to AN635 pg 35 figure 1.12.2.5
-  Wire.beginTransmission(i2c_addr);
-  Wire.write(reg);
-  Wire.write( value       & 0xFF); // value low byte
-  Wire.write((value >> 8) & 0xFF); // value high byte
-  uint8_t last_status = Wire.endTransmission();
+  _i2c->beginTransmission(i2c_addr);
+  _i2c->write(reg);
+  _i2c->write( value       & 0xFF); // value low byte
+  _i2c->write((value >> 8) & 0xFF); // value high byte
+  uint8_t last_status = _i2c->endTransmission();
 }
 
-bool FUELGAUGE::writeVerifyReg16Bit(uint8_t reg, uint16_t value)
+bool MAX17055_FUELGAUGE::writeVerifyReg16Bit(uint8_t reg, uint16_t value)
 {
   int attempt = 0;
   // Verify that the value has been written before moving on
@@ -322,15 +325,15 @@ bool FUELGAUGE::writeVerifyReg16Bit(uint8_t reg, uint16_t value)
   }
 }
 
-uint16_t FUELGAUGE::readReg16Bit(uint8_t reg)
+uint16_t MAX17055_FUELGAUGE::readReg16Bit(uint8_t reg)
 {
   uint16_t value = 0;  
-  Wire.beginTransmission(i2c_addr); 
-  Wire.write(reg);
-  uint8_t last_status = Wire.endTransmission(false);
+  _i2c->beginTransmission(i2c_addr); 
+  _i2c->write(reg);
+  uint8_t last_status = _i2c->endTransmission(false);
   
-  Wire.requestFrom(i2c_addr, (uint8_t) 2); 
-  value  = Wire.read();
-  value |= (uint16_t)Wire.read() << 8;      // value low byte
+  _i2c->requestFrom(i2c_addr, (uint8_t) 2); 
+  value  = _i2c->read();
+  value |= (uint16_t)_i2c->read() << 8;      // value low byte
   return value;
 }

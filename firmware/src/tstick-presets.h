@@ -21,6 +21,19 @@ Defines presets for the T-Stick
 General Properties for the T-Stick
 ********************************************************************/
 #include "imu-cal.h"
+#include <vector>
+
+// General includes for the Sensors
+#include "imu.h"
+#include "touch.h"
+#include "fsr.h"
+#include "button.h"
+#include "led.h"
+// Include standard sensors
+Button button;
+Fsr fsr;
+Led led;
+
 //#define TSTICK_SIZE 60
 #define I2CUPDATE_FREQ 400000 // Note that the I2C frequency is capped by Wire at 1MHz
 
@@ -36,6 +49,10 @@ General Properties for the T-Stick
     #define LED_PIN 5
     #define BUTTON_PIN 15
     #define SLEEP_PIN GPIO_NUM_15
+    
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_33};
+    #define NUM_ISOLATE_PINS 3
 
     // Boards + Sensors
     #define INDICATOR_LED
@@ -45,30 +62,21 @@ General Properties for the T-Stick
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
 
-    Button button;
-
-    #include "capsense.h"
+    #include "IDMIL-touch/idmil_touch.h"
     #define TOUCH_MAX 1
     Capsense touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    idmil_touch_config tstick_touchconfig = {
+        -1, // default touch device (not used)
+        16, // default touch size
+        -1, // noise threshold (not used)
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_LSM9DS1
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "lsm9ds1/lsm9ds1_imu.h"
+    lsm9ds1_config motion_config(Wire);
+    LSM9DS1_IMU imu;
 #endif
 
 #ifdef tstick_4gw_lolin_trill
@@ -81,6 +89,10 @@ General Properties for the T-Stick
     #define BUTTON_PIN 15
     #define SLEEP_PIN GPIO_NUM_15
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_33};
+    #define NUM_ISOLATE_PINS 3
+
     // Boards + Sensors
     #define INDICATOR_LED
     #define imu_LSM9DS1
@@ -89,30 +101,21 @@ General Properties for the T-Stick
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
 
-    Button button;
-
-    #include "trill-touch.h"
+    #include "Trill-touch/trill_touch.h"
     #define TOUCH_MAX 511
     TrillTouch touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    trill_config tstick_touchconfig = {
+        Trill::TRILL_CRAFT, // default use the trill craft device
+        TRILL_BASETOUCHSIZE, // default touch size
+        0, // noise threshold
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_LSM9DS1
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "lsm9ds1/lsm9ds1_imu.h"
+    lsm9ds1_config motion_config(Wire);
+    LSM9DS1_IMU imu;
 #endif
 
 #ifdef tstick_4gw_tinypico_capsense
@@ -124,40 +127,36 @@ General Properties for the T-Stick
     #define BUTTON_PIN 15
     #define SLEEP_PIN GPIO_NUM_15
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_33, GPIO_NUM_35};
+    #define NUM_ISOLATE_PINS 4
+
     // Boards + Sensors
     #define imu_LSM9DS1
     #define touch_IDMIL
     #define fg_NONE
 
-    // Initialise sensors
-    #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
-
-    Button button;
-
+    // Iniliase tinypico
     #include "TinyPICO.h"
     TinyPICO tinypico = TinyPICO();
 
-    #include "capsense.h"
+    // Initialise sensors
+    #include <driver/rtc_io.h> // needed for sleep
+
+    #include "IDMIL-touch/idmil_touch.h"
     #define TOUCH_MAX 1
     Capsense touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    idmil_touch_config tstick_touchconfig = {
+        -1, // default touch device (not used)
+        16, // default touch size
+        -1, // noise threshold (not used)
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_LSM9DS1
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "lsm9ds1/lsm9ds1_imu.h"
+    lsm9ds1_config motion_config(Wire);
+    LSM9DS1_IMU imu;
 #endif
 
 #ifdef tstick_4gw_tinypico_trill
@@ -170,79 +169,75 @@ General Properties for the T-Stick
     #define BUTTON_PIN 15
     #define SLEEP_PIN GPIO_NUM_15
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_33, GPIO_NUM_35};
+    #define NUM_ISOLATE_PINS 4
+
     // Boards + Sensors
     #define imu_LSM9DS1
     #define touch_Trill
     #define fg_NONE
 
-    // Initialise sensors
-    #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
-
-    Button button;
-
+    // Iniliase tinypico
     #include "TinyPICO.h"
     TinyPICO tinypico = TinyPICO();
 
-    #include "trill-touch.h"
+    // Initialise sensors
+    #include <driver/rtc_io.h> // needed for sleep
+
+    #include "Trill-touch/trill_touch.h"
     #define TOUCH_MAX 511
     TrillTouch touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    trill_config tstick_touchconfig = {
+        Trill::TRILL_CRAFT, // default use the trill craft device
+        TRILL_BASETOUCHSIZE, // default touch size
+        0, // noise threshold
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_LSM9DS1
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "lsm9ds1/lsm9ds1_imu.h"
+    lsm9ds1_config motion_config(Wire);
+    LSM9DS1_IMU imu;
 #endif
 
 
-#ifdef tstick_5gw_trill_beta
+#ifdef tstick_5gw_beta
     // Pin definitions
     #define SDA_PIN 12
     #define SCL_PIN 11
     #define FSR_PIN 3
     #define LED_PIN 5
     #define BUTTON_PIN 9
-    #define NEOPIXEL_PIN 18
     #define IMU_INT_PIN 21
     #define FUELGAUE_INT_PIN 17
     #define SLEEP_PIN GPIO_NUM_9
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_12, GPIO_NUM_11, GPIO_NUM_3};
+    #define NUM_ISOLATE_PINS 3
+
     // Boards + Sensors
     #define imu_ICM20948
-    #define touch_TRILL
+    #define touch_ENCHANTI
     #define fg_MAX17055
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
 
-    Button button;
-
-    #include "trill-touch.h"
+    #include "Trill-touch/trill_touch.h"
     #define TOUCH_MAX 511
     TrillTouch touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    trill_config tstick_touchconfig = {
+        Trill::TRILL_CRAFT, // default use the trill craft device
+        TRILL_BASETOUCHSIZE, // default touch size
+        0, // noise threshold
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include <batt.h>
-    FUELGAUGE fuelgauge;
+    #include "MAX17055/fuelgauge_max17055.h"
+    MAX17055_FUELGAUGE fuelgauge;
     fuelgauge_config fg_config = {
         0x36, //i2c_addr
         2000, // capacity (mAh)
@@ -258,15 +253,8 @@ General Properties for the T-Stick
         0, // Charge Cycles
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_ICM20948
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "icm42670_mmc5633/icm42670_mmc5633_imu.h"
+    ICM42670_MMC5633_IMU imu;
 #endif
 
 #ifdef tstick_5gw_trill_main
@@ -281,6 +269,10 @@ General Properties for the T-Stick
     #define FUELGAUE_INT_PIN 17
     #define SLEEP_PIN GPIO_NUM_9
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_8};
+    #define NUM_ISOLATE_PINS 3
+
     // Boards + Sensors
     #define INDICATOR_LED
     #define board_ENCHANTI_rev2
@@ -290,24 +282,22 @@ General Properties for the T-Stick
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
 
-    Button button;
-
-    #include "trill-touch.h"
+    #include "Trill-touch/trill_touch.h"
     #define TOUCH_MAX 511
     TrillTouch touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    trill_config tstick_touchconfig = {
+        Trill::TRILL_CRAFT, // default use the trill craft device
+        TRILL_BASETOUCHSIZE, // default touch size
+        0, // noise threshold
+        -1, // touch processing mode (not used)
+        -1, // comm mode (not used)
     };
 
-    #include <batt.h>
-    FUELGAUGE fuelgauge;
+    #include "MAX17055/fuelgauge_max17055.h"
+    MAX17055_FUELGAUGE fuelgauge;
     fuelgauge_config fg_config = {
+        Wire, // wire class
         0x36, //i2c_addr
         2000, // capacity (mAh)
         50, // End of charge Current (mA)
@@ -322,15 +312,9 @@ General Properties for the T-Stick
         0, // Charge Cycles
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_ICM20948
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "icm20948/icm20948_imu.h"
+    icm20948_imu_config motion_config(Wire);
+    ICM20948_IMU imu;
 #endif
 
 #ifdef tstick_5gw_enchanti_main
@@ -346,6 +330,10 @@ General Properties for the T-Stick
     #define ORANGE_LED 16
     #define SLEEP_PIN GPIO_NUM_9
 
+    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_8};
+    #define NUM_ISOLATE_PINS 3
+
     // Boards + Sensors
     #define LDO2
     #define INDICATOR_LED
@@ -356,24 +344,21 @@ General Properties for the T-Stick
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-    #include "button.h"
-
-    Button button;
-
-    #include "enchanti-touch.h"
+    #include "Enchanti-touch/enchanti_touch.h"
     #define TOUCH_MAX 4095
     EnchantiTouch touch;
-    touch_config tstick_touchconfig = {
-        default_config.touchdevice,
-        default_config.touchsize,
-        default_config.touch_threshold,
-        default_config.touch_mode,
-        default_config.comm_mode,
+    enchanti_touch_config tstick_touchconfig = {
+        -1, // default use the trill craft device
+        ENCHANTI_BASETOUCHSIZE, // default touch size
+        0, // noise threshold
+        Mode::DIFF, // touch processing mode
+        COMMS::I2C_MODE, // comm mode 
     };
 
-    #include <batt.h>
-    FUELGAUGE fuelgauge;
+    #include "MAX17055/fuelgauge_max17055.h"
+    MAX17055_FUELGAUGE fuelgauge;
     fuelgauge_config fg_config = {
+        Wire, // wire class
         0x36, //i2c_addr
         2000, // capacity (mAh)
         50, // End of charge Current (mA)
@@ -388,26 +373,12 @@ General Properties for the T-Stick
         0, // Charge Cycles
     };
 
-    #include "imu.h"
-    IMU imu;
-    #define TSTICK_IMU MIMUBOARD::mimu_ICM20948
-
-    #include "fsr.h"
-    Fsr fsr;
-
-    #include "led.h"
-    Led led;
+    #include "ICM20948/icm20948_imu.h"
+    icm20948_imu_config motion_config(Wire);
+    ICM20948_IMU imu;
 #endif
 
 #ifdef tstick_custom
-    // Basic libraries
-    #include "imu.h"
-    IMU imu;
-    #include "fsr.h"
-    Fsr fsr;
-    #include "led.h"
-    Led led;
-
     // Define pins
     // #define SDA_PIN 21
     // #define SCL_PIN 14
@@ -437,29 +408,19 @@ General Properties for the T-Stick
 
     // Include the other sensors
     #ifdef touch_IDMIL
-        #include "capsense.h"
+        #include "IDMIl-touch/idmil_touch.h"
         Capsense touch;
     #endif
 
     #ifdef touch_TRILL
-        #include "trill-touch.h"
+        #include "Trill-touch/trill_touch.h"
         TrillTouch touch;
     #endif
 
     #ifdef touch_ENCHANTI
-        #include "enchanti-touch.h"
+        #include "Enchanti-touch/enchanti_touch.h"
         EnchantiTouch touch;
     #endif
-
-    // Define the config for your touch board
-    #define TOUCH_MAX 4095 // define maximum touch value
-    touch_config tstick_touchconfig = {
-        -1, // default touch device
-        -1, // default touch size
-        -1, // noise threshold
-        -1, // touch processing mode
-        -1, // comm mode
-    };
 
 
     #ifdef fg_MAX17055

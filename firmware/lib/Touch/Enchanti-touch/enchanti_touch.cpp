@@ -1,4 +1,4 @@
-#include "enchanti-touch.h"
+#include "enchanti_touch.h"
 
 // Initialise touch board, 
 uint8_t EnchantiTouch::initTouch(touch_config enchanti_config) {

@@ -8,20 +8,19 @@
 #include <Arduino.h>
 #include <Trill.h>
 #include <vector>
-#include <../touch-common.h>
+#include <touch.h>
 
 #define TRILL_BASETOUCHSIZE 30
 
-// Default config for trill
-static touch_config default_config = {
-    Trill::TRILL_CRAFT, // default use the trill craft device
-    TRILL_BASETOUCHSIZE, // default touch size
-    0, // noise threshold
-    -1, // touch processing mode (not used)
-    -1, // comm mode (not used)
+struct trill_config {
+    Trill::Device touchdevice; // what device is used for touch sensing
+    int touchsize; // Size of touch sensor array
+    int touch_threshold; // threshold to detect touch
+    int touch_mode; // mode for processing touch data
+    int comm_mode; // communication mode for the touch sensor
 };
 
-class TrillTouch {
+class TrillTouch: public Touch<trill_config> {
     public:
         uint8_t initTouch(touch_config trill_config);
         void readTouch();
