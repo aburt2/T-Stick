@@ -143,5 +143,5 @@ void LSM9DS1_IMU::sleep() {
 }
 
 void LSM9DS1_IMU::clearInterrupt() {
-    // empty function
+    // empty function needs to be defined for imu.h
 }
