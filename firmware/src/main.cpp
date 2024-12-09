@@ -780,7 +780,12 @@ void setup() {
 
     // Set up I2C clock
     Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(I2CUPDATE_FREQ); // Fast mode
+    Wire.setClock(I2C_UPDATE_FREQ); // Fast mode
+
+    #ifdef MULTIPLE_WIRE_BUS
+    Wire1.begin(SDA2_PIN, SCL2_PIN);
+    Wire1.setClock(I2C2_UPDATE_FREQ);
+    #endif
 
     // Disable WiFi power save
     esp_wifi_set_ps(WIFI_PS_NONE);

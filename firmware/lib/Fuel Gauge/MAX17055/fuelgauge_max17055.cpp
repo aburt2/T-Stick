@@ -170,6 +170,12 @@ void MAX17055_FUELGAUGE::getvoltage() {
 }
 
 void MAX17055_FUELGAUGE::getcurrent(){
+    // Check if CGain register was somehow misconfigured
+    uint16_t CGAIN = readReg16Bit(0x2E);
+    if (CGAIN != 0x400) {
+        writeVerifyReg16Bit(0x2E, 0x400);
+    }
+
     // Get instantaneous current
     raw_inst_current = readReg16Bit(CURRENT_REG);
     rep_inst_current = current_multiplier_mV * raw_inst_current;

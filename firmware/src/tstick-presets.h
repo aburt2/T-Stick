@@ -35,7 +35,7 @@ Fsr fsr;
 Led led;
 
 //#define TSTICK_SIZE 60
-#define I2CUPDATE_FREQ 400000 // Note that the I2C frequency is capped by Wire at 1MHz
+#define I2C_UPDATE_FREQ 400000 // Note that the I2C frequency is capped by Wire at 1MHz
 
 // Feedback sensors
 #define BATTERY_UPDATE_RATE 1000000 // us ( 1 Hz)
@@ -202,43 +202,55 @@ Led led;
 #endif
 
 
-#ifdef tstick_5gw_beta
+#ifdef tstick_5gw_dev
     // Pin definitions
-    #define SDA_PIN 12
-    #define SCL_PIN 11
-    #define FSR_PIN 3
-    #define LED_PIN 5
+    #define SDA_PIN 21
+    #define SCL_PIN 14
+    #define FSR_PIN 8
+    #define LDO_PIN 39
     #define BUTTON_PIN 9
-    #define IMU_INT_PIN 21
     #define FUELGAUE_INT_PIN 17
+    #define IMU_INT_PIN 48
+    #define LED_PIN 15
+    #define ORANGE_LED 16
     #define SLEEP_PIN GPIO_NUM_9
 
+    #define MULTIPLE_WIRE_BUS
+    #define I2C2_UPDATE_FREQ 1000000
+    #define SDA2_PIN 18
+    #define SCL2_PIN 17
+
     // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
-    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_12, GPIO_NUM_11, GPIO_NUM_3};
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_8};
     #define NUM_ISOLATE_PINS 3
 
     // Boards + Sensors
+    #define LDO2
+    #define INDICATOR_LED
+    #define board_ENCHANTI_rev2
     #define imu_ICM20948
     #define touch_ENCHANTI
     #define fg_MAX17055
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
-
-    #include "Trill-touch/trill_touch.h"
-    #define TOUCH_MAX 511
-    TrillTouch touch;
-    trill_config tstick_touchconfig = {
-        Trill::TRILL_CRAFT, // default use the trill craft device
-        TRILL_BASETOUCHSIZE, // default touch size
+    #include "Enchanti-touch/enchanti_touch.h"
+    #define TOUCH_MAX 4095
+    EnchantiTouch touch; // Wire
+    enchanti_touch_config tstick_touchconfig = {
+        -1, // default use the trill craft device
+        ENCHANTI_BASETOUCHSIZE, // default touch size
         0, // noise threshold
-        -1, // touch processing mode (not used)
-        -1, // comm mode (not used)
+        Mode::DIFF, // touch processing mode
+        COMMS::I2C_MODE, // comm mode 
     };
 
+    // Uses Wire1
     #include "MAX17055/fuelgauge_max17055.h"
+    #define FUELGAUGE_WIRE Wire1
     MAX17055_FUELGAUGE fuelgauge;
     fuelgauge_config fg_config = {
+        FUELGAUGE_WIRE, // wire class
         0x36, //i2c_addr
         2000, // capacity (mAh)
         50, // End of charge Current (mA)
@@ -254,6 +266,9 @@ Led led;
     };
 
     #include "icm42670_mmc5633/icm42670_mmc5633_imu.h"
+    #define IMU_SPI SPI
+    #define IMU_WIRE Wire1
+    icm42670_mmc5633_config motion_config(IMU_SPI, IMU_WIRE);
     ICM42670_MMC5633_IMU imu;
 #endif
 
