@@ -237,6 +237,7 @@ void osc_bundle_add_float(lo_bundle puara_bundle,const char *path, float value) 
 void osc_bundle_add_int_array(lo_bundle puara_bundle,const char *path, int size, int *value) {
     oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), path);
     lo_message tmp_osc = lo_message_new();
+    
     for (int i = 0; i < size; i++) {
         lo_message_add_int32(tmp_osc, value[i]);
     }
@@ -423,6 +424,7 @@ void updateOSC() {
         if (!bundle) {
             return;
         }
+        // Send bundle
         updateOSC_bundle(bundle);
 
         if (use_osc1) {
@@ -431,7 +433,6 @@ void updateOSC() {
         if (use_osc2) {
             lo_send_bundle(osc2, bundle);
         }
-
         // free memory from bundle
         lo_bundle_free_recursive(bundle);
     }
@@ -449,7 +450,6 @@ void updateOSC_bundle(lo_bundle bundle) {
     osc_bundle_add_float(bundle, "instrument/touch/bottom", sensors.touchBottom);
     osc_bundle_add_int_array(bundle, "instrument/touch/discrete", TSTICK_SIZE, sensors.mergeddiscretetouch);
     osc_bundle_add_int_array(bundle, "raw/capsense", TSTICK_SIZE, sensors.mergedtouch);
-    
     // Touch gestures
     if (event.brush) {
         osc_bundle_add_float(bundle, "instrument/brush", sensors.brush);
@@ -715,10 +715,10 @@ void updateMIMU() {
         readIMU();
         event.mimu = false;
         imu.clearInterrupt();
+
+        // Update inertial gestures
+        gestures.updateInertialGestures();
     }
-    
-    // Update inertial gestures
-    gestures.updateInertialGestures();
 
     // Orientation quaternion
     sensors.quat[0] = gestures.getOrientationQuaternion().w;
@@ -778,13 +778,18 @@ void setup() {
       ledcAttachPin(pin.led, 0);
     #endif
 
+    #ifdef MULTIPLE_WIRE_BUS
+    // Touch sensor
+    Wire.begin(SDA2_PIN, SCL2_PIN);
+    Wire.setClock(I2C2_UPDATE_FREQ);
+
+    // Fuel gauge and Magnetometer
+    Wire1.begin(SDA_PIN, SCL_PIN);
+    Wire1.setClock(I2C_UPDATE_FREQ);
+    #else
     // Set up I2C clock
     Wire.begin(SDA_PIN, SCL_PIN);
     Wire.setClock(I2C_UPDATE_FREQ); // Fast mode
-
-    #ifdef MULTIPLE_WIRE_BUS
-    Wire1.begin(SDA2_PIN, SCL2_PIN);
-    Wire1.setClock(I2C2_UPDATE_FREQ);
     #endif
 
     // Disable WiFi power save

@@ -209,7 +209,6 @@ Led led;
     #define FSR_PIN 8
     #define LDO_PIN 39
     #define BUTTON_PIN 9
-    #define FUELGAUE_INT_PIN 17
     #define IMU_INT_PIN 48
     #define LED_PIN 15
     #define ORANGE_LED 16
@@ -221,8 +220,8 @@ Led led;
     #define SCL2_PIN 17
 
     // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
-    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_8};
-    #define NUM_ISOLATE_PINS 3
+    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_18, GPIO_NUM_17, GPIO_NUM_8, GPIO_NUM_7};
+    #define NUM_ISOLATE_PINS 6
 
     // Boards + Sensors
     #define LDO2
