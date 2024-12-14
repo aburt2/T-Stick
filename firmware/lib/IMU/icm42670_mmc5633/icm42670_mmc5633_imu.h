@@ -1,9 +1,17 @@
 #ifndef _ICM4670_MMC5633_IMU_H_
 #define _ICM4670_MMC5633_IMU_H_
 
+// Include IMU header
 #include "imu.h"
+
+// Include comms classes from Arduino
 #include "Wire.h" // needed for magnetometer
-#include "SPI.h"  // will probably be needed (might use ESP32 hal library directly)
+#include "SPI.h"  // will probably be needed
+
+// Include IMU classes from external libraries
+#define MAG_ID 12345
+#include "utils/IMU_utils.h"
+#include "utils/MMC5633NJL_utils.h"
 
 struct icm42670_mmc5633_config {
     TwoWire &_i2c;
@@ -29,5 +37,8 @@ class ICM42670_MMC5633_IMU : public IMU<icm42670_mmc5633_config> {
         float accl[3];
         float gyro[3];
         float magn[3];
+
+        // compass heading
+        float heading;
 };
 #endif

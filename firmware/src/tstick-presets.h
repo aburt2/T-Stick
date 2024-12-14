@@ -215,9 +215,16 @@ Led led;
     #define SLEEP_PIN GPIO_NUM_9
 
     #define MULTIPLE_WIRE_BUS
+    #define SPI_USED
     #define I2C2_UPDATE_FREQ 1000000
     #define SDA2_PIN 18
     #define SCL2_PIN 17
+
+    // SPI Pins
+    #define SPI_CS GPIO_NUM_10
+    #define SPI_SCLK GPIO_NUM_12
+    #define SPI_MOSI GPIO_NUM_11
+    #define SPI_MISO GPIO_NUM_13
 
     // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
     std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_18, GPIO_NUM_17, GPIO_NUM_8, GPIO_NUM_7};

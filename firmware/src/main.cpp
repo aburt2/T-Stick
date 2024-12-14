@@ -524,9 +524,12 @@ void readIMU() {
                                     imu.magn[2]);
 
     // Convert accel from g's to meters/sec^2
-    sensors.accl[0] = gestures.getAccelX() * 9.80665;
-    sensors.accl[1] = gestures.getAccelY() * 9.80665;
-    sensors.accl[2] = gestures.getAccelZ() * 9.80665;
+    // sensors.accl[0] = gestures.getAccelX() * 9.80665;
+    // sensors.accl[1] = gestures.getAccelY() * 9.80665;
+    // sensors.accl[2] = gestures.getAccelZ() * 9.80665;
+    sensors.accl[0] = gestures.getAccelX();
+    sensors.accl[1] = gestures.getAccelY();
+    sensors.accl[2] = gestures.getAccelZ();
     // Convert gyro from degrees/sec to radians/sec
     sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
     sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
@@ -711,13 +714,14 @@ void changeLED() {
 
 void updateMIMU() {
     // Get IMU data
+    event.mimu = true; // for testing
     if (event.mimu) {
         readIMU();
         event.mimu = false;
         imu.clearInterrupt();
 
         // Update inertial gestures
-        gestures.updateInertialGestures();
+        // gestures.updateInertialGestures();
     }
 
     // Orientation quaternion
@@ -726,9 +730,18 @@ void updateMIMU() {
     sensors.quat[2] = gestures.getOrientationQuaternion().y;
     sensors.quat[3] = gestures.getOrientationQuaternion().z;
     // Yaw (heading), pitch (tilt) and roll
-    sensors.ypr[0] = ((round(gestures.getYaw() * 1000)) / 1000);
-    sensors.ypr[1] = ((round(gestures.getPitch() * 1000)) / 1000);
-    sensors.ypr[2] = ((round(gestures.getRoll() * 1000)) / 1000);
+    // sensors.ypr[0] = ((round(gestures.getYaw() * 1000)) / 1000) * 180 / M_PI;
+    sensors.ypr[0] = imu.heading;
+    sensors.ypr[1] = ((round(gestures.getPitch() * 1000)) / 1000) * 180 / M_PI;
+    sensors.ypr[2] = ((round(gestures.getRoll() * 1000)) / 1000) * 180 / M_PI;
+
+    // normalise to 0 - 360
+    for (int i = 0; i < 3; i++) {
+        if (sensors.ypr[i] < 0) {
+            sensors.ypr[i] = 360 + sensors.ypr[i];
+        }
+    }
+
 
     // Send data if event is true
     if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
@@ -790,6 +803,12 @@ void setup() {
     // Set up I2C clock
     Wire.begin(SDA_PIN, SCL_PIN);
     Wire.setClock(I2C_UPDATE_FREQ); // Fast mode
+    #endif
+
+    // Setup SPI
+    #ifdef SPI_USED
+    SPI.begin(SPI_SCLK, SPI_MISO, SPI_MOSI, SPI_CS);
+    motion_config.ag_cs_pin = SPI_CS;
     #endif
 
     // Disable WiFi power save
@@ -989,7 +1008,7 @@ void loop() {
     }
 
     // Get touch data
-    readTouch();
+    // readTouch();
 
     // Update MIMU data
     updateMIMU();
