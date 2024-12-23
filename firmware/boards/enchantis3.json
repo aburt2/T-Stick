@@ -11,12 +11,12 @@
         "-DBOARD_HAS_PSRAM",
         "-DESP32S3_DEV",
         "-DARDUINO_USB_MODE=1",
-        "-DARDUINO_USB_CDC_ON_BOOT=1",
-        "-mfix-esp32-psram-cache-issue"
+        "-DARDUINO_USB_CDC_ON_BOOT=1"
       ],
       "f_cpu": "240000000L",
       "f_flash": "80000000L",
-      "flash_mode": "dout",
+      "flash_mode": "opi",
+      "psram_type":"opi",
       "hwids": [
         [
           "0X303A",
@@ -39,9 +39,9 @@
     ],
     "name": "EnchantiS3",
     "upload": {
-      "flash_size": "16MB",
+      "flash_size": "32MB",
       "maximum_ram_size": 327680,
-      "maximum_size": 16777216,
+      "maximum_size": 33554432,
       "require_upload_port": true,
       "speed": 921600
     },
