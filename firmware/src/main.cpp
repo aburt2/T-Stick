@@ -495,12 +495,9 @@ void readIMU() {
                                     imu.magn[2]);
 
     // Convert accel from g's to meters/sec^2
-    // sensors.accl[0] = gestures.getAccelX() * 9.80665;
-    // sensors.accl[1] = gestures.getAccelY() * 9.80665;
-    // sensors.accl[2] = gestures.getAccelZ() * 9.80665;
-    sensors.accl[0] = gestures.getAccelX();
-    sensors.accl[1] = gestures.getAccelY();
-    sensors.accl[2] = gestures.getAccelZ();
+    sensors.accl[0] = gestures.getAccelX() * 9.80665f;
+    sensors.accl[1] = gestures.getAccelY() * 9.80665f;
+    sensors.accl[2] = gestures.getAccelZ() * 9.80665f;
     // Convert gyro from degrees/sec to radians/sec
     sensors.gyro[0] = gestures.getGyroX() * M_PI / 180;
     sensors.gyro[1] = gestures.getGyroY() * M_PI / 180;
@@ -696,9 +693,9 @@ void updateMIMU() {
     }
 
     // Orientation quaternion
-    sensors.ypr[0] = ((round(gestures.getYaw() * 1000)) / 1000) * 180 / M_PI;
-    sensors.ypr[1] = ((round(gestures.getPitch() * 1000)) / 1000) * 180 / M_PI;
-    sensors.ypr[2] = ((round(gestures.getRoll() * 1000)) / 1000) * 180 / M_PI;
+    sensors.ypr[0] = ((round(gestures.getYaw() * 100)) / 100) * 180 / M_PI;
+    sensors.ypr[1] = ((round(gestures.getPitch() * 100)) / 100) * 180 / M_PI;
+    sensors.ypr[2] = ((round(gestures.getRoll() * 100)) / 100) * 180 / M_PI;
 
     // normalise to 0 - 360
     for (int i = 0; i < 3; i++) {

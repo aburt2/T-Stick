@@ -27,3 +27,9 @@
 #define SOFTOFFSETZ1 1
 #define SOFTOFFSETZ2 0
 #define SOFTOFFSETZ3 0
+
+    // if ((micros() - imu.lastTime) > MIN_DELTAT) {
+    //     imu.updateOrientation();
+    // }
+
+    // imu.magnetometerCalibration();

@@ -16,14 +16,21 @@ sensors_event_t readMagnetometer(Adafruit_MMC5603 &mag, bool serial_print) {
   sensors_event_t event;
   mag.getEvent(&event);
 
+  /************************************************** 
+   * Code below is for debugging purposes only.
+   * It is not neccesary for program functionality, and 
+   * only serves to verify correct operation of magnetometer
+   * 
+
   // Calculate the angle of the vector y,x
-  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / PI;
+  //float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / PI;
+
 
   // Normalize to 0-360
   if (heading < 0) {
     heading = 360 + heading;
   }
-
+  
   if (serial_print) {
     Serial.print("Compass Heading: ");
     Serial.print(heading);
@@ -31,6 +38,7 @@ sensors_event_t readMagnetometer(Adafruit_MMC5603 &mag, bool serial_print) {
     Serial.print("\n");
     delay(500);
   }
+  */
 
   return event;
 }

@@ -10,6 +10,7 @@
 
 // Include IMU classes from external libraries
 #define MAG_ID 12345
+#define MIN_DELTAT 10000 // 10000 microseconds (10ms)
 #include "utils/IMU_utils.h"
 #include "utils/MMC5633NJL_utils.h"
 
@@ -40,5 +41,21 @@ class ICM42670_MMC5633_IMU : public IMU<icm42670_mmc5633_config> {
 
         // compass heading
         float heading;
+        float yaw;
+        float pitch;
+        float roll;
+        float deltaT;
+        unsigned long lastTime;
+
+        // Multipliers
+        const float accelSensitivity =  1.0f / 2048.00f;
+        const float gyroSensitivity = 16.40f;
+        const float gyroMultipier = float(PI) / (gyroSensitivity * 180.0f);
+
+    ICM42670_MMC5633_IMU() {
+        lastTime = micros();
+    }
+    void updateOrientation();
+    void magnetometerCalibration();
 };
 #endif
