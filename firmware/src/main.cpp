@@ -327,6 +327,16 @@ void readBattery();
 void changeLED();
 void updateMIMU();
 
+// Unit helpers
+float normDegree(float val);
+
+float normDegree(float val) {
+    // Normalise degrees from -180,180 to 0,360 degrees
+    float out = fmodf(val, 360.0f);
+    if (out < 0) out += 360.0f;
+    return out;
+}
+
 // Define callbacks
 ///// Comms
 void updateLibmapper() {
@@ -698,11 +708,9 @@ void updateMIMU() {
     sensors.ypr[2] = ((round(gestures.getRoll() * 100)) / 100) * 180 / M_PI;
 
     // normalise to 0 - 360
-    for (int i = 0; i < 3; i++) {
-        if (sensors.ypr[i] < 0) {
-            sensors.ypr[i] = 360 + sensors.ypr[i];
-        }
-    }
+    sensors.ypr[0] = normDegree(sensors.ypr[0]);
+    sensors.ypr[2] = normDegree(sensors.ypr[2]);
+
 
     // Send data if event is true
     if (sensors.shake[0] != gestures.getShakeX() || sensors.shake[1] != gestures.getShakeY() || sensors.shake[2] != gestures.getShakeZ()) {
