@@ -39,7 +39,7 @@ void ICM42670_MMC5633_IMU::getData() {
     mag_event = readMagnetometer(mag, false);
 
     // Save data to class
-    accl[0] = ((float)imu_event.accel[0] * accelSensitivity);
+    accl[0] = -((float)imu_event.accel[0] * accelSensitivity);
     accl[1] = ((float)imu_event.accel[1] * accelSensitivity);
     accl[2] = ((float)imu_event.accel[2] * accelSensitivity);
     
