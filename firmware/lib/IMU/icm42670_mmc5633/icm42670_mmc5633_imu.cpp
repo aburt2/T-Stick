@@ -40,7 +40,7 @@ void ICM42670_MMC5633_IMU::getData() {
 
     // Save data to class
     accl[0] = -((float)imu_event.accel[0] * accelSensitivity);
-    accl[1] = ((float)imu_event.accel[1] * accelSensitivity);
+    accl[1] = -((float)imu_event.accel[1] * accelSensitivity);
     accl[2] = ((float)imu_event.accel[2] * accelSensitivity);
     
     gyro[0] = (float)imu_event.gyro[0] * gyroMultipier;
@@ -49,8 +49,8 @@ void ICM42670_MMC5633_IMU::getData() {
 
     // Magnetometer
     // Save magnetometer data to class
-    magn[0] = mag_event.magnetic.x;
-    magn[1] = mag_event.magnetic.y;
+    magn[0] = -mag_event.magnetic.x;
+    magn[1] = -mag_event.magnetic.y;
     magn[2] = mag_event.magnetic.z;
 }
 
@@ -67,7 +67,7 @@ void ICM42670_MMC5633_IMU::updateOrientation() {
         magn[0], magn[1], magn[2], 
         deltaT
     );
-    
+
     yaw = SensorFusion.getYaw();
     roll = SensorFusion.getRoll();
     pitch = SensorFusion.getPitch();

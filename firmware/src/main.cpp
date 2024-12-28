@@ -332,9 +332,8 @@ float normDegree(float val);
 
 float normDegree(float val) {
     // Normalise degrees from -180,180 to 0,360 degrees
-    float out = fmodf(val, 360.0f);
-    if (out < 0) out += 360.0f;
-    return out;
+    if (val < 0) val += 360.0f;
+    return val;
 }
 
 // Define callbacks
@@ -708,7 +707,7 @@ void updateMIMU() {
     sensors.ypr[2] = ((round(gestures.getRoll() * 100)) / 100) * 180 / M_PI;
 
     // normalise to 0 - 360
-    sensors.ypr[0] = normDegree(sensors.ypr[0]);
+    // sensors.ypr[0] = normDegree(sensors.ypr[0]);
     sensors.ypr[2] = normDegree(sensors.ypr[2]);
 
 
