@@ -67,9 +67,7 @@ void ICM42670_MMC5633_IMU::updateOrientation() {
         magn[0], magn[1], magn[2], 
         deltaT
     );
-
-    SensorFusion.computeAngles();
-
+    
     yaw = SensorFusion.getYaw();
     roll = SensorFusion.getRoll();
     pitch = SensorFusion.getPitch();
