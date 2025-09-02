@@ -29,9 +29,6 @@ Include T-Stick properties
 #include <puara.h>
 // #include <imu_orientation.h>
 #include <puara_gestures.h>
-
-
-
 #include <deque>
 #include <cmath>
 #include <algorithm>
@@ -734,8 +731,6 @@ void setup() {
     // Set CPU Frequency to max
     setCpuFrequencyMhz(240);
 
-
-
     // Disable hold on gpio pins
     #ifdef NUM_ISOLATE_PINS
     for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
@@ -786,12 +781,13 @@ void setup() {
 
     // Enable NPM1300
     npm1300_pmic.begin(Wire1);
-    while(npm1300_pmic.vbus_current_limit_get() != NPMX_VBUSIN_CURRENT_1500_MA) {
+    while(npm1300_pmic.vbus_current_limit_get(true) != NPMX_VBUSIN_CURRENT_1500_MA) {
         delay(500);
         npm1300_pmic.vbus_current_limit_set(NPMX_VBUSIN_CURRENT_1500_MA);
         npm1300_pmic.vbus_current_limit_get(true);
         delay(1000);
     }
+    delay(5000);
 
     // Set monitor type and start
     puara.start(PuaraAPI::JTAG_MONITOR);

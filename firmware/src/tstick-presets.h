@@ -224,16 +224,6 @@ Led led;
     #define SDA2_PIN 40
     #define SCL2_PIN 39
 
-    // SPI Pins
-    #define SPI_CS GPIO_NUM_10
-    #define SPI_SCLK GPIO_NUM_12
-    #define SPI_MOSI GPIO_NUM_11
-    #define SPI_MISO GPIO_NUM_13
-
-    // Sleep pins (pins to isolate/wakeup when going in and out of deep sleep)
-    std::vector<gpio_num_t> sleep_pins = {GPIO_NUM_21, GPIO_NUM_14, GPIO_NUM_18, GPIO_NUM_17, GPIO_NUM_8, GPIO_NUM_7};
-    #define NUM_ISOLATE_PINS 6
-
     // Boards + Sensors
     // #define LDO2
     #define INDICATOR_LED
@@ -277,20 +267,18 @@ Led led;
 
     #include "icm42670_mmc5983/icm42670_mmc5983_imu.h"
     // Create two hardware SPI classes
-    // gpio 9 = CIPO, gpio 10 = COPI, gpio 11 = SCKL, gpio 12 CS
     #define IMU_CIPO 9
     #define IMU_COPI 10
     #define IMU_SCK 11
     #define IMU_CS 12
     #define IMU_INT 18
+    mems_config icm42670_config(IMU_CIPO, IMU_COPI, IMU_SCK, IMU_CS, IMU_INT);
 
     #define MAG_CIPO 13
     #define MAG_COPI 48
     #define MAG_SCK 47
     #define MAG_CS 17
     #define MAG_INT 38
-
-    mems_config icm42670_config(IMU_CIPO, IMU_COPI, IMU_SCK, IMU_CS, IMU_INT);
     mems_config mmc5983_config(MAG_CIPO, MAG_COPI, MAG_SCK, MAG_CS, MAG_INT);
 
     icm42670_mmc5983_config motion_config(icm42670_config, mmc5983_config);

@@ -9,7 +9,7 @@
 SFE_MMC5983MA ICM_MAG;
 
 // Setup spi settings
-SPISettings mag_spi_settings(10000000, MSBFIRST, SPI_MODE3);
+SPISettings mag_spi_settings(2000000, MSBFIRST, SPI_MODE3);
 
 // Instance of SensorFusion class
 SF SensorFusion;
@@ -44,15 +44,16 @@ ICM42670 ICM_IMU(imu_spi, GPIO_NUM_10, 24000000);
 bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     // Start SPI with custom pins
     imu_spi.begin(config.imu_config.sck_pin, config.imu_config.cipo_pin, config.imu_config.copi_pin, config.imu_config.cs_pin);
-    while (mag_spi.begin(config.mag_config.sck_pin, config.mag_config.cipo_pin, config.mag_config.copi_pin, config.mag_config.cs_pin) == false) {
-        Serial.println("Magnetometer SPI bus failed to init. Retrying...");
-        delay(1000);
-    };
+    mag_spi.begin(config.mag_config.sck_pin, config.mag_config.cipo_pin, config.mag_config.copi_pin, config.mag_config.cs_pin);
 
-    // Set pins as outputs
-    pinMode(imu_spi.pinSS(), OUTPUT);  //VSPI SS
-    pinMode(mag_spi.pinSS(), OUTPUT);  //HSPI SS
+    // Set SS pins as outputs
+    pinMode(config.mag_config.cs_pin, OUTPUT);
+    pinMode(config.imu_config.cs_pin, OUTPUT);
 
+    // Setup enable pin
+    pinMode(config.imu_config.int_pin, INPUT);
+    pinMode(config.mag_config.int_pin, INPUT);
+    attachInterrupt(digitalPinToInterrupt(config.mag_config.int_pin), mag_interrupt, RISING);
 
     // Setup 6DOF IMU
     ICM_IMU.spi_cs = config.imu_config.cs_pin; // update CS pin
@@ -67,9 +68,8 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     
     // Setup error callback
     ICM_MAG.setErrorCallback(mag_error);
-    // while (ICM_MAG.begin(mag_spi.pinSS(), mag_spi_settings, mag_spi) == false) {
+    // while (ICM_MAG.begin(config.mag_config.cs_pin, mag_spi_settings, mag_spi) == false) {
     //     delay(500);
-    //     ICM_MAG.isConnected();
     //     if (!ICM_MAG.softReset()) {
     //         Serial.println("magnetometer did not reset...");
     //     } else {
@@ -101,11 +101,7 @@ void ICM42670_MMC5983_IMU::getData() {
 
     // Read raw imu data
     inv_imu_sensor_event_t imu_event;
-    ICM_IMU.getDataFromRegisters(imu_event);
-
-    // Read raw magnetometer
-    uint32_t rawMagX, rawMagY, rawMagZ;
-    ICM_MAG.readFieldsXYZ(&rawMagX, &rawMagY, &rawMagZ);
+    ICM_IMU.getDataFromRegisters(imu_event);    
 
     // Save data to class
     accl[0] = -((float)imu_event.accel[0] * accelSensitivity);
@@ -117,10 +113,17 @@ void ICM42670_MMC5983_IMU::getData() {
     gyro[2] = (float)imu_event.gyro[2] * gyroMultipier;
 
     // Magnetometer
-    // Save magnetometer data to class
-    magn[0] = -rawMagX;
-    magn[1] = -rawMagY;
-    magn[2] = rawMagZ;
+    uint32_t rawMagX, rawMagY, rawMagZ;
+    if (newMagData) {
+        newMagData = false;
+        ICM_MAG.clearMeasDoneInterrupt();
+        ICM_MAG.readFieldsXYZ(&rawMagX, &rawMagY, &rawMagZ);
+        // Save magnetometer data to class
+        
+        magn[0] = -((float)rawMagX - 131072.0);
+        magn[1] = -((float)rawMagY - 131072.0);
+        magn[2] = (float)rawMagZ - 131072.0;
+    }
 }
 
 void ICM42670_MMC5983_IMU::updateOrientation() {
