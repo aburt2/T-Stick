@@ -6,12 +6,12 @@ class IMU {
     public:
         // Methods
         typedef IMU_CONFIG imu_config;
-        virtual bool initIMU(imu_config config);
+        virtual bool initIMU(imu_config config) = 0;
         
         // Read data
-        virtual void getData();
-        virtual void sleep();
-        virtual void clearInterrupt();
+        virtual void getData() = 0;
+        virtual void sleep() = 0;
+        virtual void clearInterrupt() = 0;
 
         // Store data
         float accl[3];

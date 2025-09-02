@@ -25,8 +25,8 @@ class Touch {
          * 
          */
         typedef TOUCH_CONFIG touch_config;
-        virtual uint8_t initTouch(touch_config touch_config);
-        virtual void readTouch();
+        virtual uint8_t initTouch(touch_config touch_config) = 0;
+        virtual void readTouch() = 0;
 };
 
 #endif

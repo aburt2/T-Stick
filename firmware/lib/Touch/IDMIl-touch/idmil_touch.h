@@ -35,7 +35,6 @@ class Capsense: public Touch<idmil_touch_config> {
         int discreteTouch[64];
         uint8_t touchStripsSize;
         int touchSize;
-        int discreteTouch[120];    // /instrument/touch/raw, i..., 0--1, ... (1 per stripe)
     private:
         void capsenseRequest(uint8_t address,uint8_t request, uint8_t answer_size);
         void reorderCapsense (int *origArray, uint8_t arraySize);

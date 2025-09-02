@@ -1,8 +1,8 @@
 {
     "device": "TStick",
-    "id": 1,
-    "author": "T-Stick Builder",
-    "institution": "SAT/IDMIL (2024)",
+    "id": 551,
+    "author": "Albert Niyonsenga",
+    "institution": "SAT/IDMIL (2025)",
     "APpasswd": "mappings",
     "wifiSSID": "tstick_network",
     "wifiPSK": "mappings",

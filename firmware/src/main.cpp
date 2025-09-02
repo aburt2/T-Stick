@@ -27,19 +27,16 @@ Include T-Stick properties
 #include "esp_wifi.h"
 
 #include <puara.h>
-#include <imu_orientation.h>
+// #include <imu_orientation.h>
 #include <puara_gestures.h>
-#include <mapper.h>
-#include <charconv>
-#include "osc.hpp"
-#include <lo/lo.h>
-#include <lo/lo_lowlevel.h>
-#include <lo/lo_types.h>
+
+
 
 #include <deque>
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+
 
 // initializing libmapper, puara, puara-gestures, and liblo client
 mpr_dev lm_dev = 0;
@@ -192,65 +189,6 @@ struct Led_variables {
 //////////////////////
 lo_server osc_server;
 
-
-int generic_handler(const char *path, const char *types, lo_arg ** argv,
-                    int argc, lo_message data, void *user_data) {
-    for (int i = 0; i < argc; i++) {
-        printf("arg %d '%c' ", i, types[i]);
-        lo_arg_pp((lo_type)types[i], argv[i]);
-        printf("\n");
-    }
-    printf("\n");
-    fflush(stdout);
-
-    return 1;
-}
-
-void osc_bundle_add_int(lo_bundle puara_bundle,const char *path, int value) {
-    int ret = 0;
-    oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), path);
-    lo_message tmp_osc = lo_message_new();
-    ret = lo_message_add_int32(tmp_osc, value);
-    if (ret < 0) {
-        lo_message_free(tmp_osc);
-        return;
-    }
-    ret = lo_bundle_add_message(puara_bundle, oscNamespace.c_str(), tmp_osc);
-    if(ret < 0) {
-        std::cout << "error adding message to bundle" << std::endl;
-    }
-}
-void osc_bundle_add_float(lo_bundle puara_bundle,const char *path, float value) {
-    int ret = 0;
-    oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), path);
-    lo_message tmp_osc = lo_message_new();
-    ret = lo_message_add_float(tmp_osc, value);
-    if (ret < 0) {
-        lo_message_free(tmp_osc);
-        return;
-    }
-    ret = lo_bundle_add_message(puara_bundle, oscNamespace.c_str(), tmp_osc);
-    if(ret < 0) {
-        std::cout << "error adding message to bundle" << std::endl;
-    }
-}
-void osc_bundle_add_int_array(lo_bundle puara_bundle,const char *path, int size, int *value) {
-    oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), path);
-    lo_message tmp_osc = lo_message_new();
-    for (int i = 0; i < size; i++) {
-        lo_message_add_int32(tmp_osc, value[i]);
-    }
-    lo_bundle_add_message(puara_bundle, oscNamespace.c_str(), tmp_osc);
-}
-
-void osc_bundle_add_float_array(lo_bundle puara_bundle,const char *path, int size,  float *value) {
-    oscNamespace.replace(oscNamespace.begin()+baseNamespace.size(),oscNamespace.end(), path);
-    lo_message tmp_osc = lo_message_new();
-    for (int i = 0; i < size; i++) {
-        lo_message_add_float(tmp_osc, value[i]);
-    }
-    lo_bundle_add_message(puara_bundle, oscNamespace.c_str(), tmp_osc);
-}
 
 ////////////////////////////////
 // sensors and libmapper data //
@@ -623,27 +561,27 @@ void readTouch() {
 
 void readAnalog() {
     // Update button
-    gestures.updateTrigButton(button.getButton());
+    // gestures.updateTrigButton(button.getButton());
     
-    // go to deep sleep if double press button
-    if (gestures.getButtonDTap()){
-        std::cout << "\nEntering deep sleep.\n\nGoodbye!\n" << std::endl;
-        imu.sleep();
+    // // go to deep sleep if double press button
+    // if (gestures.getButtonDTap()){
+    //     std::cout << "\nEntering deep sleep.\n\nGoodbye!\n" << std::endl;
+    //     imu.sleep();
 
-        #ifdef LDO2
-            digitalWrite(LDO_PIN, LOW); // disable second LDO
-        #endif
+    //     #ifdef LDO2
+    //         digitalWrite(LDO_PIN, LOW); // disable second LDO
+    //     #endif
 
-        // Isolate pullup pins to lowe deep sleep 
-        #ifdef NUM_ISOLATE_PINS
-        for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
-            rtc_gpio_isolate(sleep_pins[idx]);
-        }   
-        #endif
+    //     // Isolate pullup pins to lowe deep sleep 
+    //     #ifdef NUM_ISOLATE_PINS
+    //     for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
+    //         rtc_gpio_isolate(sleep_pins[idx]);
+    //     }   
+    //     #endif
 
-        delay(1000);
-        esp_deep_sleep_start();
-    }
+    //     delay(1000);
+    //     esp_deep_sleep_start();
+    // }
 
     // Read FSR
     fsr.readFsr();
@@ -706,10 +644,10 @@ void changeLED() {
         }
         led.setInterval(1000);
         led_var.ledValue = led.blink(255, 40);
-        ledcWrite(0, led_var.ledValue);
+        ledcWrite(pin.led, led_var.ledValue);
     } else {
         // If not connected to WiFi turn off blue LED
-        ledcWrite(0, 0);
+        ledcWrite(pin.led, 0);
         // Cycle LED on and Off
         digitalWrite(ORANGE_LED, HIGH);
     }
@@ -757,7 +695,7 @@ void updateMIMU() {
     if (event.mimu) {
         readIMU();
         event.mimu = false;
-        imu.clearInterrupt();
+        // imu.clearInterrupt();
 
         // Update inertial gestures
         gestures.updateInertialGestures();
@@ -796,6 +734,8 @@ void setup() {
     // Set CPU Frequency to max
     setCpuFrequencyMhz(240);
 
+
+
     // Disable hold on gpio pins
     #ifdef NUM_ISOLATE_PINS
     for (int idx = 0; idx < NUM_ISOLATE_PINS; idx++) {
@@ -817,8 +757,7 @@ void setup() {
 
     // Set up LEDs
     #ifdef INDICATOR_LED
-      ledcSetup(0, 5000, 8);
-      ledcAttachPin(pin.led, 0);
+      ledcAttach(pin.led, 5000, 12);
     #endif
 
     #ifdef MULTIPLE_WIRE_BUS
@@ -835,45 +774,46 @@ void setup() {
     Wire.setClock(I2C_UPDATE_FREQ); // Fast mode
     #endif
 
-    // Setup SPI
-    #ifdef SPI_USED
-    SPI.begin(SPI_SCLK, SPI_MISO, SPI_MOSI, SPI_CS);
-    motion_config.ag_cs_pin = SPI_CS;
-    #endif
-
     // Disable WiFi power save
     esp_wifi_set_ps(WIFI_PS_NONE);
+
+
 
     puara.set_version(firmware_version);
 
     // Start Serial Monitor
     Serial.begin(115200);
-    
-    // Set monitor type and start
-    puara.start(Puara::JTAG_MONITOR);
-    baseNamespace.append(puara.get_dmi_name());
 
-    std::cout << "    Initializing button configuration... ";
-    if (button.initButton(pin.button)) {
-        std::cout << "done" << std::endl;
-    } else {
-        std::cout << "initialization failed!" << std::endl;
+    // Enable NPM1300
+    npm1300_pmic.begin(Wire1);
+    while(npm1300_pmic.vbus_current_limit_get() != NPMX_VBUSIN_CURRENT_1500_MA) {
+        delay(500);
+        npm1300_pmic.vbus_current_limit_set(NPMX_VBUSIN_CURRENT_1500_MA);
+        npm1300_pmic.vbus_current_limit_get(true);
+        delay(1000);
     }
-    // Initialise Button Interrupt
-    attachInterrupt(pin.button, buttton_isr, CHANGE);
+
+    // Set monitor type and start
+    puara.start(PuaraAPI::JTAG_MONITOR);
+    baseNamespace.append(puara.dmi_name());
+
+    // std::cout << "    Initializing button configuration... ";
+    // if (button.initButton(pin.button)) {
+    //     std::cout << "done" << std::endl;
+    // } else {
+    //     std::cout << "initialization failed!" << std::endl;
+    // }
+
+    
+    // // Initialise Button Interrupt
+    // attachInterrupt(pin.button, buttton_isr, CHANGE);
 
     // Setting Deep sleep wake button
-    rtc_gpio_pullup_en(SLEEP_PIN);
-    esp_sleep_enable_ext0_wakeup(SLEEP_PIN,0); // 1 = High, 0 = Low
+    // rtc_gpio_pullup_en(SLEEP_PIN);
+    // esp_sleep_enable_ext0_wakeup(SLEEP_PIN,0); // 1 = High, 0 = Low change to power management Class
 
     std::cout << "    Initializing IMU... ";
     imu.initIMU(motion_config);
-
-    // If the IMU interrupt pin is specified, setup the interrupt
-    #ifdef IMU_INT_PIN
-    pinMode(IMU_INT_PIN, INPUT_PULLUP);
-    attachInterrupt(IMU_INT_PIN, imu_isr, CHANGE);
-    #endif
 
     readIMU(); // get some data and save it to avoid puara-gesture crashes due to empty buffer
     std::cout << "done" << std::endl;
@@ -950,18 +890,18 @@ void setup() {
     // Only do rest of setup if the T-Stick is connected to WiFi
     if (puara.get_StaIsConnected()) {
         // Only check at start up
-        std::cout << "    Initializing Liblo server/client at " << puara.getLocalPORTStr() << " ... ";
+        std::cout << "    Initializing Liblo server/client at " << puara.LocalPORTStr() << " ... ";
         if (puara.IP1_ready()) {
             std::cout << "    Initialising IP1  ... ";
-            osc1 = lo_address_new(puara.getIP1().c_str(), puara.getPORT1Str().c_str());
+            osc1 = lo_address_new(puara.IP1().c_str(), puara.PORT1Str().c_str());
             use_osc1 = true;
         }
         if (puara.IP2_ready()) {
             std::cout << "    Initialising IP2  ... ";
-            osc2 = lo_address_new(puara.getIP2().c_str(), puara.getPORT2Str().c_str());
+            osc2 = lo_address_new(puara.IP2().c_str(), puara.PORT2Str().c_str());
             use_osc2 = true;
         }
-        osc_server = lo_server_new(puara.getLocalPORTStr().c_str(), error);
+        osc_server = lo_server_new(puara.LocalPORTStr().c_str(), error);
         lo_server_add_method(osc_server, NULL, NULL, generic_handler, NULL);
         
         /// Setup puara bundle
@@ -973,7 +913,7 @@ void setup() {
         use_libmapper = puara.getVarNumber("enable_libmapper");
         if (use_libmapper) {
             std::cout << "    Initializing Libmapper device/signals... ";
-            lm_dev = mpr_dev_new(puara.get_dmi_name().c_str(), 0);
+            lm_dev = mpr_dev_new(puara.dmi_name().c_str(), 0);
             // FSR Signals
             lm.fsr = mpr_sig_new(lm_dev, MPR_DIR_OUT, "raw/fsr", 1, MPR_INT32, "un", &lm.fsrMin, &lm.fsrMax, 0, 0, 0);
             lm.squeeze = mpr_sig_new(lm_dev, MPR_DIR_OUT, "instrument/squeeze", 1, MPR_FLT, "fl", &lm.squeezeMin, &lm.squeezeMax, 0, 0, 0);
@@ -1019,7 +959,7 @@ void setup() {
 
     // Using Serial.print and delay to prevent interruptions
     delay(500);
-    std::cout << puara.get_dmi_name().c_str() << std::endl;
+    std::cout << puara.dmi_name().c_str() << std::endl;
     std::cout << "Edu Meneses\nMetalab - Société des Arts Technologiques (SAT)\nIDMIL - CIRMMT - McGill University" << std::endl;
     std::cout << "Firmware version: \n" << firmware_version<< "\n" << std::endl;
 }
@@ -1033,13 +973,13 @@ void loop() {
     // Read analog signals
     readAnalog();
 
-    // Update Battery data
-    if (millis() - battery.interval > battery.timer) {
-      battery.timer = millis();
-      readBattery();
-    }
+    // // Update Battery data
+    // if (millis() - battery.interval > battery.timer) {
+    //   battery.timer = millis();
+    //   readBattery();
+    // }
 
-    // Get touch data
+    // // Get touch data
     // readTouch();
 
     // Update MIMU data

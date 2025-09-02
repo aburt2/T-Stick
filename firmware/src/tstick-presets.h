@@ -34,6 +34,10 @@ Button button;
 Fsr fsr;
 Led led;
 
+// Add include for networking
+#include "osc.hpp"
+#include <mapper.h>
+
 //#define TSTICK_SIZE 60
 #define I2C_UPDATE_FREQ 400000 // Note that the I2C frequency is capped by Wire at 1MHz
 
@@ -217,8 +221,8 @@ Led led;
     #define MULTIPLE_WIRE_BUS
     #define SPI_USED
     #define I2C2_UPDATE_FREQ 1000000
-    #define SDA2_PIN 18
-    #define SCL2_PIN 17
+    #define SDA2_PIN 40
+    #define SCL2_PIN 39
 
     // SPI Pins
     #define SPI_CS GPIO_NUM_10
@@ -231,12 +235,12 @@ Led led;
     #define NUM_ISOLATE_PINS 6
 
     // Boards + Sensors
-    #define LDO2
+    // #define LDO2
     #define INDICATOR_LED
     #define board_ENCHANTI_rev2
-    #define imu_ICM20948
+    // #define imu_ICM20948
     #define touch_ENCHANTI
-    #define fg_MAX17055
+    // #define fg_MAX17055
 
     // Initialise sensors
     #include <driver/rtc_io.h> // needed for sleep
@@ -251,31 +255,49 @@ Led led;
         COMMS::I2C_MODE, // comm mode 
     };
 
-    // Uses Wire1
-    #include "MAX17055/fuelgauge_max17055.h"
-    #define FUELGAUGE_WIRE Wire1
-    MAX17055_FUELGAUGE fuelgauge;
-    fuelgauge_config fg_config = {
-        FUELGAUGE_WIRE, // wire class
-        0x36, //i2c_addr
-        2000, // capacity (mAh)
-        50, // End of charge Current (mA)
-        10, // rsense (mOhm)
-        3, // empty voltage (V)
-        3.88, //recovery voltage (V)
-        0, // soc
-        0, // rcomp
-        0, // tempco
-        0, // fullcap
-        0, // fullcapnorm
-        0, // Charge Cycles
-    };
+    // // Uses Wire1
+    // #include "MAX17055/fuelgauge_max17055.h"
+    // #define FUELGAUGE_WIRE Wire1
+    // MAX17055_FUELGAUGE fuelgauge;
+    // fuelgauge_config fg_config = {
+    //     FUELGAUGE_WIRE, // wire class
+    //     0x36, //i2c_addr
+    //     2000, // capacity (mAh)
+    //     50, // End of charge Current (mA)
+    //     10, // rsense (mOhm)
+    //     3, // empty voltage (V)
+    //     3.88, //recovery voltage (V)
+    //     0, // soc
+    //     0, // rcomp
+    //     0, // tempco
+    //     0, // fullcap
+    //     0, // fullcapnorm
+    //     0, // Charge Cycles
+    // };
 
-    #include "icm42670_mmc5633/icm42670_mmc5633_imu.h"
-    #define IMU_SPI SPI
-    #define IMU_WIRE Wire1
-    icm42670_mmc5633_config motion_config(IMU_SPI, IMU_WIRE);
-    ICM42670_MMC5633_IMU imu;
+    #include "icm42670_mmc5983/icm42670_mmc5983_imu.h"
+    // Create two hardware SPI classes
+    // gpio 9 = CIPO, gpio 10 = COPI, gpio 11 = SCKL, gpio 12 CS
+    #define IMU_CIPO 9
+    #define IMU_COPI 10
+    #define IMU_SCK 11
+    #define IMU_CS 12
+    #define IMU_INT 18
+
+    #define MAG_CIPO 13
+    #define MAG_COPI 48
+    #define MAG_SCK 47
+    #define MAG_CS 17
+    #define MAG_INT 38
+
+    mems_config icm42670_config(IMU_CIPO, IMU_COPI, IMU_SCK, IMU_CS, IMU_INT);
+    mems_config mmc5983_config(MAG_CIPO, MAG_COPI, MAG_SCK, MAG_CS, MAG_INT);
+
+    icm42670_mmc5983_config motion_config(icm42670_config, mmc5983_config);
+    ICM42670_MMC5983_IMU imu;
+
+    #include "npm1300.hpp"
+    NPM1300_PMIC npm1300_pmic(Wire1);
 #endif
 
 #ifdef tstick_5gw_trill_main
