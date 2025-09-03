@@ -289,11 +289,11 @@ Led led;
 
     #include "icm42670_mmc5983/icm42670_mmc5983_imu.h"
     // Create two hardware SPI classes
-    #define IMU_CIPO 9
-    #define IMU_COPI 10
-    #define IMU_SCK 11
-    #define IMU_CS 12
-    #define IMU_INT 18
+    #define IMU_CIPO GPIO_NUM_9
+    #define IMU_COPI GPIO_NUM_10
+    #define IMU_SCK GPIO_NUM_11
+    #define IMU_CS GPIO_NUM_12
+    #define IMU_INT GPIO_NUM_18
     mems_config icm42670_config(IMU_CIPO, IMU_COPI, IMU_SCK, IMU_CS, IMU_INT);
 
     #define MAG_CIPO GPIO_NUM_13

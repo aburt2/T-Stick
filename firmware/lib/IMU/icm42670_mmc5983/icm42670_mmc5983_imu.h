@@ -12,13 +12,13 @@
 #include <SparkFun_MMC5983MA_Arduino_Library.h>
 
 struct mems_config {
-    uint8_t cipo_pin = -1;
-    uint8_t copi_pin = -1;
-    uint8_t sck_pin = -1;
-    uint8_t cs_pin = -1;
-    uint8_t int_pin = -1;
+    gpio_num_t cipo_pin;
+    gpio_num_t copi_pin;
+    gpio_num_t sck_pin;
+    gpio_num_t cs_pin;
+    gpio_num_t int_pin;
 
-    mems_config(uint8_t cipo, uint8_t copi, uint8_t sck, uint8_t cs, uint8_t _int_pin) : 
+    mems_config(gpio_num_t cipo, gpio_num_t copi, gpio_num_t sck, gpio_num_t cs, gpio_num_t _int_pin) : 
         cipo_pin(cipo), 
         copi_pin(copi),
         sck_pin(sck), 

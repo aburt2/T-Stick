@@ -24,23 +24,23 @@ uint8_t EnchantiTouch::initTouch(touch_config enchanti_config) {
 
     // Setup SPI if spi mode selected
     if (comMode == COMMS::SPI_MODE) {
-        // to use DMA buffer, use these methods to allocate buffer
-        spi_master_tx_buf = master.allocDMABuffer(ENCHANTI_BUFFERSIZE);
-        spi_master_rx_buf = master.allocDMABuffer(ENCHANTI_BUFFERSIZE);
+        // // to use DMA buffer, use these methods to allocate buffer
+        // spi_master_tx_buf = master.allocDMABuffer(ENCHANTI_BUFFERSIZE);
+        // spi_master_rx_buf = master.allocDMABuffer(ENCHANTI_BUFFERSIZE);
 
-        // set the DMA buffer
-        for (uint32_t i = 0; i < ENCHANTI_BUFFERSIZE; i++) {
-            spi_master_tx_buf[i] = i & 0xFF;
-        }
-        memset(spi_master_rx_buf, 0, ENCHANTI_BUFFERSIZE);
+        // // set the DMA buffer
+        // for (uint32_t i = 0; i < ENCHANTI_BUFFERSIZE; i++) {
+        //     spi_master_tx_buf[i] = i & 0xFF;
+        // }
+        // memset(spi_master_rx_buf, 0, ENCHANTI_BUFFERSIZE);
 
-        // intialising the spi bus 
-        master.setDataMode(SPI_MODE0);    
-        master.setFrequency(spiClk);            
-        master.setMaxTransferSize(ENCHANTI_BUFFERSIZE);  
-        master.setDutyCyclePos(96);
-        // Start bus
-        master.begin();
+        // // intialising the spi bus 
+        // master.setDataMode(SPI_MODE0);    
+        // master.setFrequency(spiClk);            
+        // master.setMaxTransferSize(ENCHANTI_BUFFERSIZE);  
+        // master.setDutyCyclePos(96);
+        // // Start bus
+        // master.begin();
     }
 
     // // Send configuration data to touch board
@@ -146,26 +146,26 @@ void EnchantiTouch::readI2CBuffer(uint8_t i2c_addr, uint8_t reg, uint8_t length,
 
 void EnchantiTouch::readSPIBuffer(uint16_t length, int offset)
 {
-    // prepare for data read
-    uint8_t loc = 0;
-    uint16_t value = 0;  
+    // // prepare for data read
+    // uint8_t loc = 0;
+    // uint16_t value = 0;  
 
-    // Start transaction
-    memset(spi_master_rx_buf, 0, ENCHANTI_BUFFERSIZE);
-    const size_t received_bytes = master.transfer(NULL, spi_master_rx_buf, length);
+    // // Start transaction
+    // memset(spi_master_rx_buf, 0, ENCHANTI_BUFFERSIZE);
+    // const size_t received_bytes = master.transfer(NULL, spi_master_rx_buf, length);
 
-    // Process data
-    while (loc < (touchSize*2)) {
-        uint8_t lsb  = spi_master_rx_buf[loc+offset];
-        ++loc;
-        uint8_t msb  = spi_master_rx_buf[loc+offset];
-        ++loc;
-        value = uint16_t(msb << 8) | uint16_t(lsb);
-        if (value < 4097) { // spi occassionally throws junk ignore it
-            if (data[int(loc/2)] != value) {
-                newData = 1;
-            }
-            data[int(loc/2)] = value;
-        }
-    }
+    // // Process data
+    // while (loc < (touchSize*2)) {
+    //     uint8_t lsb  = spi_master_rx_buf[loc+offset];
+    //     ++loc;
+    //     uint8_t msb  = spi_master_rx_buf[loc+offset];
+    //     ++loc;
+    //     value = uint16_t(msb << 8) | uint16_t(lsb);
+    //     if (value < 4097) { // spi occassionally throws junk ignore it
+    //         if (data[int(loc/2)] != value) {
+    //             newData = 1;
+    //         }
+    //         data[int(loc/2)] = value;
+    //     }
+    // }
 }

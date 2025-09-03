@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include "Wire.h"
-#include <ESP32DMASPIMaster.h>
 #include <iostream>
 #include <touch.h>
 
@@ -50,7 +49,6 @@ class EnchantiTouch: public Touch<enchanti_touch_config>
         };
 
         // Include SPI
-        ESP32DMASPI::Master master;
         const int spiClk = 2000000;
         uint8_t* spi_master_tx_buf;
         uint8_t* spi_master_rx_buf;

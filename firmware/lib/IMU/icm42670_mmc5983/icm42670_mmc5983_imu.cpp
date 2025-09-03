@@ -8,7 +8,8 @@ SPIClass * mag_spi = NULL;
 // Create instance of magnetometer
 SFE_MMC5983MA ICM_MAG;
 // Setup spi settings
-SPISettings mag_spi_settings(10000000, MSBFIRST, SPI_MODE3);
+SPISettings mag_spi_settings(1000000, MSBFIRST, SPI_MODE3);
+spi_config mag_spi_config;
 // error callback for potatos
 void mag_error(SF_MMC5983MA_ERROR errorCode) {
     Serial.println(ICM_MAG.errorCodeString(errorCode));
@@ -52,20 +53,19 @@ void mag_interrupt()
 bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     // Initialise new SPI classes
     imu_spi = new SPIClass(FSPI);
-    mag_spi = new SPIClass(HSPI);
 
     // Start SPI with custom pins
     imu_spi->begin(config.imu_config.sck_pin, config.imu_config.cipo_pin, config.imu_config.copi_pin, config.imu_config.cs_pin);
-    while(!mag_spi->begin(config.mag_config.sck_pin, config.mag_config.cipo_pin, config.mag_config.copi_pin, config.mag_config.cs_pin)) {
-        Serial.println("SPI bus failed to start.");
-    }
-    mag_spi->setDataMode(SPI_MODE3);
+
+    // Get spi config for SPI
+    mag_spi_config.spi_bus = SPI3_HOST;
+    mag_spi_config.miso = config.mag_config.cipo_pin;
+    mag_spi_config.mosi = config.mag_config.copi_pin;
+    mag_spi_config.sck = config.mag_config.sck_pin;
+    mag_spi_config.ss = config.mag_config.cs_pin;
 
     // Set SS pins as outputs
-    pinMode(config.mag_config.cs_pin, OUTPUT);
     pinMode(config.imu_config.cs_pin, OUTPUT);
-    digitalWrite(config.mag_config.cs_pin, HIGH);
-    digitalWrite(config.mag_config.cs_pin, LOW);
 
     // Setup interrupt pin
     pinMode(config.imu_config.int_pin, INPUT);
@@ -88,7 +88,6 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     delay(100); // Wait for IMU to stabilise
     
     // Setup Magnetometer
-    ICM_MAG.mmc_io._spiPort = mag_spi;
     ICM_MAG.setErrorCallback(mag_error);
     // while (ICM_MAG.begin() == false) {
     //     delay(500);
@@ -100,18 +99,14 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     //     }
     //     delay(500);
     // }
-    while (ICM_MAG.begin(config.mag_config.cs_pin, mag_spi_settings) == false) {
+    ICM_MAG.begin(mag_spi_config, mag_spi_settings);
+    
+    while (ICM_MAG.isConnected() == false) {
         delay(500);
         if (!ICM_MAG.softReset()) {
             Serial.println("magnetometer did not reset...");
         } else {
             Serial.println("successful reset...");
-        }
-        if (ICM_MAG.is3WireSPIEnabled()) {
-            Serial.println("3Wire SPI enabled.");
-        }
-        if (!ICM_MAG.mmc_io.spiInUse()) {
-            Serial.println("SPI not being set properly");
         }
         delay(500);
     }
@@ -161,7 +156,7 @@ void ICM42670_MMC5983_IMU::getData() {
         accl[0] = ((float)imu_accl[0] * accelSensitivity);
         accl[1] = ((float)imu_accl[1] * accelSensitivity);
         accl[2] = ((float)imu_accl[2] * accelSensitivity);
-        Serial.printf("New accel data: %f, %f, %f\n", accl[0], accl[1], accl[2]); // for debugging
+        // Serial.printf("New accel data: %f, %f, %f\n", accl[0], accl[1], accl[2]); // for debugging
 
         // Save gyro data
         gyro[0] = (float)imu_gyro[0] * gyroMultipier;
