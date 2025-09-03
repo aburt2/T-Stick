@@ -2,8 +2,8 @@
 #include <float.h>
 
 // SPIn Classes
-SPIClass imu_spi(FSPI);
-SPIClass mag_spi(HSPI);
+SPIClass * imu_spi = NULL;
+SPIClass * mag_spi = NULL;
 
 // Create instance of magnetometer
 SFE_MMC5983MA ICM_MAG;
@@ -12,10 +12,13 @@ SPISettings mag_spi_settings(10000000, MSBFIRST, SPI_MODE3);
 // error callback for potatos
 void mag_error(SF_MMC5983MA_ERROR errorCode) {
     Serial.println(ICM_MAG.errorCodeString(errorCode));
+    if (errorCode == SF_MMC5983MA_ERROR::INVALID_DEVICE) {
+        Serial.printf("PRODUCT ID READ: %d\n", ICM_MAG.product_id);
+    }
 }
 
 // Create instance of IMU
-ICM42670 ICM_IMU(imu_spi, GPIO_NUM_10, 24000000);
+ICM42670 ICM_IMU(*imu_spi, GPIO_NUM_10, 24000000);
 // imu interrupt callback
 int16_t imu_accl[3] = {0,0,0};
 int16_t imu_gyro[3] = {0,0,0};
@@ -47,13 +50,22 @@ void mag_interrupt()
 }
 
 bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
+    // Initialise new SPI classes
+    imu_spi = new SPIClass(FSPI);
+    mag_spi = new SPIClass(HSPI);
+
     // Start SPI with custom pins
-    imu_spi.begin(config.imu_config.sck_pin, config.imu_config.cipo_pin, config.imu_config.copi_pin, config.imu_config.cs_pin);
-    mag_spi.begin(config.mag_config.sck_pin, config.mag_config.cipo_pin, config.mag_config.copi_pin, config.mag_config.cs_pin);
+    imu_spi->begin(config.imu_config.sck_pin, config.imu_config.cipo_pin, config.imu_config.copi_pin, config.imu_config.cs_pin);
+    while(!mag_spi->begin(config.mag_config.sck_pin, config.mag_config.cipo_pin, config.mag_config.copi_pin, config.mag_config.cs_pin)) {
+        Serial.println("SPI bus failed to start.");
+    }
+    mag_spi->setDataMode(SPI_MODE3);
 
     // Set SS pins as outputs
     pinMode(config.mag_config.cs_pin, OUTPUT);
     pinMode(config.imu_config.cs_pin, OUTPUT);
+    digitalWrite(config.mag_config.cs_pin, HIGH);
+    digitalWrite(config.mag_config.cs_pin, LOW);
 
     // Setup interrupt pin
     pinMode(config.imu_config.int_pin, INPUT);
@@ -63,10 +75,11 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     attachInterrupt(digitalPinToInterrupt(config.mag_config.int_pin), mag_interrupt, RISING);
 
     // Setup 6DOF IMU
+    ICM_IMU.spi = imu_spi;
     ICM_IMU.spi_cs = config.imu_config.cs_pin; // update CS pin
     while (ICM_IMU.begin() != 0) {
         Serial.println("ICM42670 did not respond. Retrying...");
-        Serial.printf("CS PIN: GPIO %d\n", imu_spi.pinSS());
+        Serial.printf("CS PIN: GPIO %d\n", imu_spi->pinSS());
         delay(1000);
     };
     ICM_IMU.enableFifoInterrupt(config.imu_config.int_pin, imu_interrupt, 10);
@@ -74,10 +87,12 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     ICM_IMU.startGyro(1600, 2000);  // Set ODR and range for gyroscope
     delay(100); // Wait for IMU to stabilise
     
-    // Setup error callback
+    // Setup Magnetometer
+    ICM_MAG.mmc_io._spiPort = mag_spi;
     ICM_MAG.setErrorCallback(mag_error);
-    // while (ICM_MAG.begin(config.mag_config.cs_pin, mag_spi_settings, mag_spi) == false) {
+    // while (ICM_MAG.begin() == false) {
     //     delay(500);
+    //     Serial.printf("CS Pin State: %d\n", digitalRead(config.mag_config.cs_pin));
     //     if (!ICM_MAG.softReset()) {
     //         Serial.println("magnetometer did not reset...");
     //     } else {
@@ -85,7 +100,22 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     //     }
     //     delay(500);
     // }
-    ICM_MAG.begin(mag_spi.pinSS(), mag_spi_settings, mag_spi);
+    while (ICM_MAG.begin(config.mag_config.cs_pin, mag_spi_settings) == false) {
+        delay(500);
+        if (!ICM_MAG.softReset()) {
+            Serial.println("magnetometer did not reset...");
+        } else {
+            Serial.println("successful reset...");
+        }
+        if (ICM_MAG.is3WireSPIEnabled()) {
+            Serial.println("3Wire SPI enabled.");
+        }
+        if (!ICM_MAG.mmc_io.spiInUse()) {
+            Serial.println("SPI not being set properly");
+        }
+        delay(500);
+    }
+    // ICM_MAG.begin(config.mag_config.cs_pin, mag_spi_settings);
 
     // Setup magnetometer
     ICM_MAG.softReset();
@@ -127,10 +157,13 @@ void ICM42670_MMC5983_IMU::getData() {
     } else if (newIMUData) {
         newIMUData = false;
         ICM_IMU.getDataFromFifo(imu_cb);
+        // Save accel data
         accl[0] = ((float)imu_accl[0] * accelSensitivity);
         accl[1] = ((float)imu_accl[1] * accelSensitivity);
         accl[2] = ((float)imu_accl[2] * accelSensitivity);
-        
+        Serial.printf("New accel data: %f, %f, %f\n", accl[0], accl[1], accl[2]); // for debugging
+
+        // Save gyro data
         gyro[0] = (float)imu_gyro[0] * gyroMultipier;
         gyro[1] = (float)imu_gyro[1] * gyroMultipier;
         gyro[2] = (float)imu_gyro[2] * gyroMultipier;
@@ -139,7 +172,6 @@ void ICM42670_MMC5983_IMU::getData() {
     // Magnetometer
     uint32_t rawMagX, rawMagY, rawMagZ;
     if (newMagData || !mag_use_interrupts) {
-        Serial.println("New Magnetometer Data"); // Debugging
         newMagData = false;
         ICM_MAG.clearMeasDoneInterrupt();
         ICM_MAG.readFieldsXYZ(&rawMagX, &rawMagY, &rawMagZ);
@@ -148,6 +180,7 @@ void ICM42670_MMC5983_IMU::getData() {
         magn[0] = -((float)rawMagX - 131072.0);
         magn[1] = -((float)rawMagY - 131072.0);
         magn[2] = (float)rawMagZ - 131072.0;
+        Serial.printf("New Magnetometer Data: %f, %f, %f\n",magn[0], magn[1], magn[2]); // Debugging
     }
 }
 

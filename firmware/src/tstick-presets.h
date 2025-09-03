@@ -239,9 +239,12 @@ Led led;
 
     #define MULTIPLE_WIRE_BUS
     #define SPI_USED
-    #define I2C2_UPDATE_FREQ 1000000
+    // #define I2C2_UPDATE_FREQ 1000000
+    #define I2C2_UPDATE_FREQ 100000
     #define SDA2_PIN 40
     #define SCL2_PIN 39
+    // #define SDA2_PIN 48
+    // #define SCL2_PIN 47
 
     // Boards + Sensors
     // #define LDO2
@@ -293,11 +296,11 @@ Led led;
     #define IMU_INT 18
     mems_config icm42670_config(IMU_CIPO, IMU_COPI, IMU_SCK, IMU_CS, IMU_INT);
 
-    #define MAG_CIPO 13
-    #define MAG_COPI 48
-    #define MAG_SCK 47
-    #define MAG_CS 17
-    #define MAG_INT 38
+    #define MAG_CIPO GPIO_NUM_13
+    #define MAG_COPI GPIO_NUM_48
+    #define MAG_SCK GPIO_NUM_47
+    #define MAG_CS GPIO_NUM_17
+    #define MAG_INT GPIO_NUM_38
     mems_config mmc5983_config(MAG_CIPO, MAG_COPI, MAG_SCK, MAG_CS, MAG_INT);
 
     icm42670_mmc5983_config motion_config(icm42670_config, mmc5983_config);
