@@ -10,11 +10,6 @@
 // Include IMU classes from external libraries
 #include "ICM42670P.h"
 #include <SparkFun_MMC5983MA_Arduino_Library.h>
-#define MAG_ID 12345
-#define MIN_DELTAT 10000 // 10000 microseconds (10ms)
-
-// Debugging
-
 
 struct mems_config {
     uint8_t cipo_pin = -1;
@@ -62,6 +57,10 @@ class ICM42670_MMC5983_IMU : public IMU<icm42670_mmc5983_config> {
         float gyro[3];
         float magn[3];
 
+        // Configuration parameters
+        bool imu_use_interrupts = false;
+        bool mag_use_interrupts = false;
+
         // compass heading
         float heading;
         float yaw;
@@ -78,7 +77,6 @@ class ICM42670_MMC5983_IMU : public IMU<icm42670_mmc5983_config> {
     ICM42670_MMC5983_IMU() {
         lastTime = micros();
     }
-    void updateOrientation();
     void magnetometerCalibration();
 };
 #endif

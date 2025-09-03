@@ -18,23 +18,6 @@ Include T-Stick properties
 */ 
 #include "tstick-presets.h"
 
-#include "Arduino.h"
-#include "time.h"
-// For JTAG monitor
-#include "USB.h"
-
-// For disabling power saving
-#include "esp_wifi.h"
-
-#include <puara.h>
-// #include <imu_orientation.h>
-#include <puara_gestures.h>
-#include <deque>
-#include <cmath>
-#include <algorithm>
-#include <numeric>
-
-
 // initializing libmapper, puara, puara-gestures, and liblo client
 mpr_dev lm_dev = 0;
 Puara puara;
@@ -46,7 +29,6 @@ std::string baseNamespace = "/";
 std::string oscNamespace;
 bool use_osc1 = false;
 bool use_osc2 = false;
-
 ///////////////////////////
 // Calibration Structure //
 ///////////////////////////

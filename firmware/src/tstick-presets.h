@@ -20,8 +20,26 @@ Defines presets for the T-Stick
 /******************************************************************** 
 General Properties for the T-Stick
 ********************************************************************/
+// All includes
+#include "Arduino.h"
+#include "time.h"
+// For JTAG monitor
+#include "USB.h"
+
+// For disabling power saving
+#include "esp_wifi.h"
+
+// Puara management module
+#include <puara.h>
+
+// Puara Gestures
+#include <puara_gestures.h>
 #include "imu-cal.h"
 #include <vector>
+#include <deque>
+#include <cmath>
+#include <algorithm>
+#include <numeric>
 
 // General includes for the Sensors
 #include "imu.h"
@@ -29,14 +47,15 @@ General Properties for the T-Stick
 #include "fsr.h"
 #include "button.h"
 #include "led.h"
-// Include standard sensors
-Button button;
-Fsr fsr;
-Led led;
 
 // Add include for networking
 #include "osc.hpp"
 #include <mapper.h>
+
+// Include standard sensors
+Button button;
+Fsr fsr;
+Led led;
 
 //#define TSTICK_SIZE 60
 #define I2C_UPDATE_FREQ 400000 // Note that the I2C frequency is capped by Wire at 1MHz

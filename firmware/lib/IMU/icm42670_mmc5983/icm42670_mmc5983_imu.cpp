@@ -1,22 +1,34 @@
 #include "icm42670_mmc5983_imu.h"
-#include "SensorFusion.h"
 #include <float.h>
 
-// Instantiate an ICM42670 with LSB address set to 0 and 
-
+// SPIn Classes
+SPIClass imu_spi(FSPI);
+SPIClass mag_spi(HSPI);
 
 // Create instance of magnetometer
 SFE_MMC5983MA ICM_MAG;
-
 // Setup spi settings
-SPISettings mag_spi_settings(2000000, MSBFIRST, SPI_MODE3);
-
-// Instance of SensorFusion class
-SF SensorFusion;
-
+SPISettings mag_spi_settings(10000000, MSBFIRST, SPI_MODE3);
 // error callback for potatos
 void mag_error(SF_MMC5983MA_ERROR errorCode) {
     Serial.println(ICM_MAG.errorCodeString(errorCode));
+}
+
+// Create instance of IMU
+ICM42670 ICM_IMU(imu_spi, GPIO_NUM_10, 24000000);
+// imu interrupt callback
+int16_t imu_accl[3] = {0,0,0};
+int16_t imu_gyro[3] = {0,0,0};
+void imu_cb(inv_imu_sensor_event_t *evt) {
+    if(ICM_IMU.isAccelDataValid(evt)&&ICM_IMU.isGyroDataValid(evt)) {
+        imu_accl[0] = evt->accel[0];
+        imu_accl[1] = evt->accel[1];
+        imu_accl[2] = evt->accel[2];
+        
+        imu_gyro[0] = evt->gyro[0];
+        imu_gyro[1] = evt->gyro[1];
+        imu_gyro[2] = evt->gyro[2];
+    }
 }
 
 // Interrupt routines
@@ -34,13 +46,6 @@ void mag_interrupt()
     newMagData = true;
 }
 
-// SPIn Classes
-SPIClass imu_spi(FSPI);
-SPIClass mag_spi(HSPI);
-
-// clock speed 40MHz
-ICM42670 ICM_IMU(imu_spi, GPIO_NUM_10, 24000000);
-
 bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     // Start SPI with custom pins
     imu_spi.begin(config.imu_config.sck_pin, config.imu_config.cipo_pin, config.imu_config.copi_pin, config.imu_config.cs_pin);
@@ -50,9 +55,11 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     pinMode(config.mag_config.cs_pin, OUTPUT);
     pinMode(config.imu_config.cs_pin, OUTPUT);
 
-    // Setup enable pin
+    // Setup interrupt pin
     pinMode(config.imu_config.int_pin, INPUT);
     pinMode(config.mag_config.int_pin, INPUT);
+
+    // Setup interrupts
     attachInterrupt(digitalPinToInterrupt(config.mag_config.int_pin), mag_interrupt, RISING);
 
     // Setup 6DOF IMU
@@ -62,6 +69,7 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
         Serial.printf("CS PIN: GPIO %d\n", imu_spi.pinSS());
         delay(1000);
     };
+    ICM_IMU.enableFifoInterrupt(config.imu_config.int_pin, imu_interrupt, 10);
     ICM_IMU.startAccel(1600, 16);  // Set ODR and range for accelerometer
     ICM_IMU.startGyro(1600, 2000);  // Set ODR and range for gyroscope
     delay(100); // Wait for IMU to stabilise
@@ -88,6 +96,10 @@ bool ICM42670_MMC5983_IMU::initIMU(imu_config config) {
     ICM_MAG.enableInterrupt();
     newMagData = true;
 
+    // Set interrupt flags
+    imu_use_interrupts = true;
+    mag_use_interrupts = true;
+
     // Setu
     return true;
 }
@@ -99,22 +111,35 @@ void ICM42670_MMC5983_IMU::getData() {
     // gyro: x,y,z
     // mag: x,y,z
 
-    // Read raw imu data
-    inv_imu_sensor_event_t imu_event;
-    ICM_IMU.getDataFromRegisters(imu_event);    
+    if (!imu_use_interrupts) {
+        // Read raw imu data
+        inv_imu_sensor_event_t imu_event;
+        ICM_IMU.getDataFromRegisters(imu_event);    
 
-    // Save data to class
-    accl[0] = -((float)imu_event.accel[0] * accelSensitivity);
-    accl[1] = -((float)imu_event.accel[1] * accelSensitivity);
-    accl[2] = ((float)imu_event.accel[2] * accelSensitivity);
-    
-    gyro[0] = (float)imu_event.gyro[0] * gyroMultipier;
-    gyro[1] = (float)imu_event.gyro[1] * gyroMultipier;
-    gyro[2] = (float)imu_event.gyro[2] * gyroMultipier;
+        // Save data to class
+        accl[0] = -((float)imu_event.accel[0] * accelSensitivity);
+        accl[1] = -((float)imu_event.accel[1] * accelSensitivity);
+        accl[2] = ((float)imu_event.accel[2] * accelSensitivity);
+        
+        gyro[0] = (float)imu_event.gyro[0] * gyroMultipier;
+        gyro[1] = (float)imu_event.gyro[1] * gyroMultipier;
+        gyro[2] = (float)imu_event.gyro[2] * gyroMultipier;
+    } else if (newIMUData) {
+        newIMUData = false;
+        ICM_IMU.getDataFromFifo(imu_cb);
+        accl[0] = ((float)imu_accl[0] * accelSensitivity);
+        accl[1] = ((float)imu_accl[1] * accelSensitivity);
+        accl[2] = ((float)imu_accl[2] * accelSensitivity);
+        
+        gyro[0] = (float)imu_gyro[0] * gyroMultipier;
+        gyro[1] = (float)imu_gyro[1] * gyroMultipier;
+        gyro[2] = (float)imu_gyro[2] * gyroMultipier;
+    }
 
     // Magnetometer
     uint32_t rawMagX, rawMagY, rawMagZ;
-    if (newMagData) {
+    if (newMagData || !mag_use_interrupts) {
+        Serial.println("New Magnetometer Data"); // Debugging
         newMagData = false;
         ICM_MAG.clearMeasDoneInterrupt();
         ICM_MAG.readFieldsXYZ(&rawMagX, &rawMagY, &rawMagZ);
@@ -124,26 +149,6 @@ void ICM42670_MMC5983_IMU::getData() {
         magn[1] = -((float)rawMagY - 131072.0);
         magn[2] = (float)rawMagZ - 131072.0;
     }
-}
-
-void ICM42670_MMC5983_IMU::updateOrientation() {
-    unsigned long now = micros();
-    deltaT = (now - lastTime)/1000000.0f;
-    lastTime = now;
-
-    getData();
-
-    SensorFusion.MadgwickUpdate(
-        gyro[0], gyro[1], gyro[2],
-        accl[0], accl[1], accl[2],
-        magn[0], magn[1], magn[2], 
-        deltaT
-    );
-
-    yaw = SensorFusion.getYaw();
-    roll = SensorFusion.getRoll();
-    pitch = SensorFusion.getPitch();
-    
 }
 
 void ICM42670_MMC5983_IMU::magnetometerCalibration() {
@@ -206,7 +211,6 @@ void ICM42670_MMC5983_IMU::magnetometerCalibration() {
 
         }
     }
-
 }
 
 
